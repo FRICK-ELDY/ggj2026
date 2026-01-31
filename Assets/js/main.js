@@ -76,12 +76,8 @@ function handlePanelAction(action) {
     configPanel.setState({ bgmVolume: value });
   } else if (id === 'se_slider' && value !== undefined) {
     configPanel.setState({ seVolume: value });
-  } else if (id === 'quality_low') {
-    configPanel.setState({ graphicsQuality: 0 });
-  } else if (id === 'quality_med') {
-    configPanel.setState({ graphicsQuality: 1 });
-  } else if (id === 'quality_high') {
-    configPanel.setState({ graphicsQuality: 2 });
+  } else if (id === 'message_speed_slider' && value !== undefined) {
+    configPanel.setState({ messageSpeed: value });
   }
 }
 
@@ -100,7 +96,11 @@ canvas.addEventListener('pointerdown', (e) => {
       const action = configPanel.getActionAt(panelHits[0].point);
       if (action) {
         const id = typeof action === 'object' && action !== null ? action.id : action;
-        if (id === 'bgm_slider' || id === 'se_slider') {
+        if (
+          id === 'bgm_slider' ||
+          id === 'se_slider' ||
+          id === 'message_speed_slider'
+        ) {
           draggingSlider = id;
           handlePanelAction(action);
         }
@@ -119,8 +119,10 @@ canvas.addEventListener('pointermove', (e) => {
       const value = configPanel.getSliderValueFromPoint(panelHits[0].point, draggingSlider);
       if (draggingSlider === 'bgm_slider') {
         configPanel.setState({ bgmVolume: value });
-      } else {
+      } else if (draggingSlider === 'se_slider') {
         configPanel.setState({ seVolume: value });
+      } else if (draggingSlider === 'message_speed_slider') {
+        configPanel.setState({ messageSpeed: value });
       }
     }
   }

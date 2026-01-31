@@ -1,24 +1,69 @@
 import * as THREE from 'three';
 import { getScaledSize } from './screenScale.js';
 
-/** パネルベースサイズ（ベース解像度 1024×576 でのピクセル） */
-const BASE_PANEL_WIDTH = 280;
-const BASE_PANEL_HEIGHT = 380;
+/** パネルベースサイズ（ベース解像度 1024×576 でのピクセル・横長） */
+const BASE_PANEL_WIDTH = 480;
+const BASE_PANEL_HEIGHT = 240;
 
-/** スライダートラック幅（数値との間に余白を取るため 240 より短く） */
-const SLIDER_TRACK_WIDTH = 210;
+/** ラベル開始 X（表示モード・SE・メッセージスピードの左端） */
+const LABEL_LEFT = 28;
+/** BGM ラベルの X（短いラベルのためわずかに右にずらす） */
+const BGM_LABEL_LEFT = LABEL_LEFT + 12;
+/** ラベル幅（表示モード・BGM 等の左側テキスト用） */
+const LABEL_WIDTH = 140;
+/** コンテンツ開始 X（ラベル右・ボタン・スライダー共通） */
+const CONTENT_START_X = LABEL_LEFT + LABEL_WIDTH;
+/** コンテンツ幅（ボタン2つ or スライダー＋数値まで。右端を揃える） */
+const CONTENT_WIDTH = 240;
+/** フルスクリーン・ウィンドウボタン間の余白 */
+const BUTTON_GAP = 8;
+/** 表示モードのボタン1つ幅（2つ＋間隔で CONTENT_WIDTH に収める） */
+const DISPLAY_MODE_BUTTON_W = (CONTENT_WIDTH - BUTTON_GAP) / 2;
 /** 数値表示をパネル右端に右揃えで表示する X 位置（右端） */
-const SLIDER_VALUE_RIGHT_X = BASE_PANEL_WIDTH - 8;
+const SLIDER_VALUE_RIGHT_X = BASE_PANEL_WIDTH - 20;
+
+/** 各セクションの Y 位置（ラベル・コントロール・区切り線・行中央） */
+const LAYOUT = {
+  titleLine: 42,
+  displayModeButtons: 56,
+  displayModeRowCenter: 72,
+  displayModeLine: 94,
+  bgmSlider: 112,
+  bgmRowCenter: 122,
+  bgmLine: 138,
+  seSlider: 156,
+  seRowCenter: 166,
+  seLine: 182,
+  messageSlider: 200,
+  messageRowCenter: 210,
+  messageLine: 226,
+};
 
 /** クリック可能な領域（ベース座標: 左上原点） */
 const BUTTON_RECTS = [
-  { id: 'fullscreen', x: 20, y: 52, w: 115, h: 32 },
-  { id: 'window', x: 145, y: 52, w: 115, h: 32 },
-  { id: 'bgm_slider', x: 20, y: 128, w: SLIDER_TRACK_WIDTH, h: 20 },
-  { id: 'se_slider', x: 20, y: 188, w: SLIDER_TRACK_WIDTH, h: 20 },
-  { id: 'quality_low', x: 20, y: 268, w: 72, h: 32 },
-  { id: 'quality_med', x: 104, y: 268, w: 72, h: 32 },
-  { id: 'quality_high', x: 188, y: 268, w: 72, h: 32 }
+  {
+    id: 'fullscreen',
+    x: CONTENT_START_X,
+    y: LAYOUT.displayModeButtons,
+    w: DISPLAY_MODE_BUTTON_W,
+    h: 32,
+  },
+  {
+    id: 'window',
+    x: CONTENT_START_X + DISPLAY_MODE_BUTTON_W + BUTTON_GAP,
+    y: LAYOUT.displayModeButtons,
+    w: DISPLAY_MODE_BUTTON_W,
+    h: 32,
+  },
+  { id: 'bgm_slider', x: CONTENT_START_X, y: LAYOUT.bgmSlider, w: CONTENT_WIDTH, h: 20 },
+  { id: 'se_slider', x: CONTENT_START_X, y: LAYOUT.seSlider, w: CONTENT_WIDTH, h: 20 },
+  {
+    id: 'message_speed_slider',
+    x: CONTENT_START_X,
+    y: LAYOUT.messageSlider,
+    w: CONTENT_WIDTH,
+    h: 20,
+  },
 ];
 
 /** デフォルト設定状態 */
@@ -26,7 +71,7 @@ const DEFAULT_STATE = {
   displayMode: 'window',
   bgmVolume: 80,
   seVolume: 80,
-  graphicsQuality: 1
+  messageSpeed: 80,
 };
 
 /**
@@ -48,7 +93,6 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
   ctx.scale(scaleX, scaleY);
 
   const isFullscreen = state.displayMode === 'fullscreen';
-  const qualityIdx = state.graphicsQuality;
 
   ctx.font = '14px "Yu Gothic", "Meiryo", sans-serif';
 
@@ -63,30 +107,86 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
   ctx.font = 'bold 16px "Yu Gothic", "Meiryo", sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('設定', 16, 14);
+  ctx.fillText('設定', 16, 16);
+  drawSectionLine(ctx, LAYOUT.titleLine);
 
   ctx.font = '12px "Yu Gothic", "Meiryo", sans-serif';
   ctx.fillStyle = '#a0a0a0';
-  ctx.fillText('表示モード', 20, 38);
-
-  drawButton(ctx, 20, 52, 115, 32, 'フルスクリーン', isFullscreen);
-  drawButton(ctx, 145, 52, 115, 32, 'ウィンドウ', !isFullscreen);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('表示モード', LABEL_LEFT, LAYOUT.displayModeRowCenter);
+  drawButton(
+    ctx,
+    CONTENT_START_X,
+    LAYOUT.displayModeButtons,
+    DISPLAY_MODE_BUTTON_W,
+    32,
+    'フルスクリーン',
+    isFullscreen
+  );
+  drawButton(
+    ctx,
+    CONTENT_START_X + DISPLAY_MODE_BUTTON_W + BUTTON_GAP,
+    LAYOUT.displayModeButtons,
+    DISPLAY_MODE_BUTTON_W,
+    32,
+    'ウィンドウ',
+    !isFullscreen
+  );
+  drawSectionLine(ctx, LAYOUT.displayModeLine);
 
   ctx.fillStyle = '#a0a0a0';
-  ctx.fillText('BGM', 20, 118);
-  drawSlider(ctx, 20, 128, SLIDER_TRACK_WIDTH, 20, state.bgmVolume);
-  drawSliderValue(ctx, SLIDER_VALUE_RIGHT_X, 138, state.bgmVolume);
+  ctx.fillText('BGM', BGM_LABEL_LEFT, LAYOUT.bgmRowCenter);
+  drawSlider(
+    ctx,
+    CONTENT_START_X,
+    LAYOUT.bgmSlider,
+    CONTENT_WIDTH,
+    20,
+    state.bgmVolume
+  );
+  drawSliderValue(
+    ctx,
+    SLIDER_VALUE_RIGHT_X,
+    LAYOUT.bgmSlider + 10,
+    state.bgmVolume
+  );
+  drawSectionLine(ctx, LAYOUT.bgmLine);
 
   ctx.fillStyle = '#a0a0a0';
-  ctx.fillText('SE', 20, 178);
-  drawSlider(ctx, 20, 188, SLIDER_TRACK_WIDTH, 20, state.seVolume);
-  drawSliderValue(ctx, SLIDER_VALUE_RIGHT_X, 198, state.seVolume);
+  ctx.fillText('SE', LABEL_LEFT, LAYOUT.seRowCenter);
+  drawSlider(
+    ctx,
+    CONTENT_START_X,
+    LAYOUT.seSlider,
+    CONTENT_WIDTH,
+    20,
+    state.seVolume
+  );
+  drawSliderValue(
+    ctx,
+    SLIDER_VALUE_RIGHT_X,
+    LAYOUT.seSlider + 10,
+    state.seVolume
+  );
+  drawSectionLine(ctx, LAYOUT.seLine);
 
   ctx.fillStyle = '#a0a0a0';
-  ctx.fillText('画質', 20, 254);
-  drawButton(ctx, 20, 268, 72, 32, '低', qualityIdx === 0);
-  drawButton(ctx, 104, 268, 72, 32, '中', qualityIdx === 1);
-  drawButton(ctx, 188, 268, 72, 32, '高', qualityIdx === 2);
+  ctx.fillText('メッセージスピード', LABEL_LEFT, LAYOUT.messageRowCenter);
+  drawSlider(
+    ctx,
+    CONTENT_START_X,
+    LAYOUT.messageSlider,
+    CONTENT_WIDTH,
+    20,
+    state.messageSpeed
+  );
+  drawSliderValue(
+    ctx,
+    SLIDER_VALUE_RIGHT_X,
+    LAYOUT.messageSlider + 10,
+    state.messageSpeed
+  );
+  drawSectionLine(ctx, LAYOUT.messageLine);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -107,6 +207,17 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/** 各項目の下に引く区切り線（パネル幅いっぱい・左右に余白） */
+function drawSectionLine(ctx, y) {
+  const margin = 16;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(margin, y);
+  ctx.lineTo(BASE_PANEL_WIDTH - margin, y);
+  ctx.stroke();
+}
+
 function drawButton(ctx, x, y, w, h, label, active) {
   ctx.fillStyle = active ? 'rgba(232, 213, 183, 0.35)' : 'rgba(255, 255, 255, 0.08)';
   ctx.strokeStyle = active ? 'rgba(232, 213, 183, 0.8)' : 'rgba(255, 255, 255, 0.25)';
@@ -116,20 +227,6 @@ function drawButton(ctx, x, y, w, h, label, active) {
   ctx.stroke();
   ctx.fillStyle = active ? '#e8d5b7' : '#e0e0e0';
   ctx.font = '12px "Yu Gothic", "Meiryo", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, x + w / 2, y + h / 2);
-}
-
-function drawSmallButton(ctx, x, y, w, h, label) {
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, x, y, w, h, 4);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#e0e0e0';
-  ctx.font = '14px "Yu Gothic", "Meiryo", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, x + w / 2, y + h / 2);
@@ -197,7 +294,11 @@ function getActionAtLocal(localPoint, panelWidth, panelHeight, basePanelW, baseP
     const rw = rect.w * scaleX;
     const rh = rect.h * scaleY;
     if (px >= rx && px <= rx + rw && py >= ry && py <= ry + rh) {
-      if (rect.id === 'bgm_slider' || rect.id === 'se_slider') {
+      if (
+        rect.id === 'bgm_slider' ||
+        rect.id === 'se_slider' ||
+        rect.id === 'message_speed_slider'
+      ) {
         const t = (px - rx) / rw;
         const value = Math.round(Math.max(0, Math.min(100, t * 100)));
         return { id: rect.id, value };
@@ -209,8 +310,8 @@ function getActionAtLocal(localPoint, panelWidth, panelHeight, basePanelW, baseP
 }
 
 /**
- * Three.js 上の設定パネル（オースオソグラフィック UI レイヤー）
- * 一般的なゲーム設定項目: 表示モード, BGM/SE 音量, 画質
+ * Three.js 上の設定パネル（オルソグラフィック UI レイヤー）
+ * 一般的なゲーム設定項目: 表示モード, BGM/SE 音量, メッセージスピード
  * @param {HTMLElement} container - フルスクリーン対象コンテナ
  * @returns {{
  *   panelGroup: THREE.Group,
@@ -287,7 +388,7 @@ export function createConfigPanel3d(container) {
   /**
    * ドラッグ用: パネル上のワールド座標からスライダー値（0〜100）を算出する
    * @param {THREE.Vector3} worldPoint - レイとメッシュの交点（ワールド座標）
-   * @param {string} sliderId - 'bgm_slider' | 'se_slider'
+   * @param {string} sliderId - 'bgm_slider' | 'se_slider' | 'message_speed_slider'
    * @returns {number} 0〜100
    */
   function getSliderValueFromPoint(worldPoint, sliderId) {

@@ -3,10 +3,32 @@
 body {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 16px;
   background: #1a1a2e;
   font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+}
+
+.site-header {
+  text-align: center;
+}
+
+.site-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  letter-spacing: 0.05em;
+}
+
+.site-footer {
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 0.75rem;
+  color: #888;
 }
 
 #game-container {

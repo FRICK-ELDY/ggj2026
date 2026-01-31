@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { createBox } from './model/box.js';
+import { updateYawRollPitch } from './animate/rotate.js';
 
 // キャンバスサイズ
-const WIDTH = 640;
-const HEIGHT = 360;
+const WIDTH = 1024;
+const HEIGHT = 576;
 
 // キャンバス取得
 const canvas = document.getElementById('game-canvas');
@@ -21,14 +23,8 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(WIDTH, HEIGHT);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// 簡単なテスト用ジオメトリ（ノベルゲームの雰囲気で）
-const geometry = new THREE.PlaneGeometry(3, 2);
-const material = new THREE.MeshBasicMaterial({
-  color: 0x4a4a6a,
-  side: THREE.DoubleSide
-});
-const plane = new THREE.Mesh(geometry, material);
-scene.add(plane);
+// ボックス作成
+const box = createBox(scene);
 
 // リサイズハンドラ（フルスクリーン切替時など）
 function onResize() {
@@ -68,6 +64,7 @@ window.addEventListener('resize', onResize);
 // アニメーションループ
 function animate() {
   requestAnimationFrame(animate);
+  updateYawRollPitch(box);
   renderer.render(scene, camera);
 }
 animate();

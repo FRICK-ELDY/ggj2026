@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { scaleValue } from './screenScale.js';
 
 /** 設定アイコンの Unicode（Material Symbols: settings = U+E8B8） */
 const SETTINGS_ICON = '\uE8B8';
@@ -45,8 +46,9 @@ async function createGearTextureFromMaterialSymbols() {
  */
 const ANCHOR = { x: 1, y: 1 };   // 右上
 const PIVOT = { x: 1, y: 1 };    // 要素の右上をアンカーに合わせる
-const MARGIN_PX = 12;
-const BUTTON_SIZE_PX = 40;
+/** ベース解像度でのマージン・ボタンサイズ（screenScale でスケールされる） */
+const BASE_MARGIN_PX = 12;
+const BASE_BUTTON_SIZE_PX = 40;
 
 /**
  * Three.js Canvas 上に描画するコンフィグ（歯車）ボタン（オースオソグラフィック UI レイヤー）
@@ -80,7 +82,7 @@ export async function createConfigButton3d() {
   uiScene.add(mesh);
 
   /**
-   * アンカー・ピボットに従い、画面サイズで位置とカメラを更新する
+   * アンカー・ピボットに従い、解像度スケールで位置・サイズを更新する
    * @param {number} width - キャンバス幅（ピクセル）
    * @param {number} height - キャンバス高さ（ピクセル）
    */
@@ -91,20 +93,23 @@ export async function createConfigButton3d() {
     orthoCamera.bottom = -height / 2;
     orthoCamera.updateProjectionMatrix();
 
+    const marginPx = scaleValue(BASE_MARGIN_PX, width, height);
+    const buttonSizePx = scaleValue(BASE_BUTTON_SIZE_PX, width, height);
+
     const halfW = width / 2;
     const halfH = height / 2;
-    const anchorX = -halfW + width * ANCHOR.x + (ANCHOR.x === 0 ? MARGIN_PX : -MARGIN_PX);
-    const anchorY = -halfH + height * ANCHOR.y + (ANCHOR.y === 0 ? MARGIN_PX : -MARGIN_PX);
+    const anchorX = -halfW + width * ANCHOR.x + (ANCHOR.x === 0 ? marginPx : -marginPx);
+    const anchorY = -halfH + height * ANCHOR.y + (ANCHOR.y === 0 ? marginPx : -marginPx);
 
-    const pivotOffsetX = (PIVOT.x - 0.5) * BUTTON_SIZE_PX;
-    const pivotOffsetY = (PIVOT.y - 0.5) * BUTTON_SIZE_PX;
+    const pivotOffsetX = (PIVOT.x - 0.5) * buttonSizePx;
+    const pivotOffsetY = (PIVOT.y - 0.5) * buttonSizePx;
     mesh.position.set(
       anchorX - pivotOffsetX,
       anchorY - pivotOffsetY,
       0
     );
 
-    mesh.scale.set(BUTTON_SIZE_PX, BUTTON_SIZE_PX, 1);
+    mesh.scale.set(buttonSizePx, buttonSizePx, 1);
   }
 
   return { uiScene, orthoCamera, mesh, update };

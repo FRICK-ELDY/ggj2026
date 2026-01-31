@@ -1,7 +1,7 @@
 /**
  * コンポーネント（header, footer）を読み込んで挿入する
  */
-async function loadComponent(elementId, path) {
+async function loadComponent(elementId, path, options = {}) {
   const element = document.getElementById(elementId);
   if (!element) return;
 
@@ -9,7 +9,24 @@ async function loadComponent(elementId, path) {
     const response = await fetch(path);
     if (!response.ok) throw new Error(`Failed to load ${path}`);
     const html = await response.text();
-    element.innerHTML = html;
+
+    // game.html の場合は importmap を先に document に注入
+    if (options.injectScripts) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const scripts = doc.querySelectorAll('script[data-game-importmap]');
+      scripts.forEach(script => {
+        const newScript = document.createElement('script');
+        newScript.type = script.type;
+        newScript.textContent = script.textContent;
+        document.head.appendChild(newScript);
+      });
+      // importmap 以外の HTML を挿入
+      const gameContent = doc.body.querySelector('#game-container');
+      element.innerHTML = gameContent ? gameContent.outerHTML : '';
+    } else {
+      element.innerHTML = html;
+    }
   } catch (err) {
     console.error(`Error loading component ${path}:`, err);
     element.innerHTML = `<!-- ${path} の読み込みに失敗しました -->`;
@@ -50,5 +67,9 @@ function initTabs() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent('header-placeholder', 'components/header.html');
   await loadComponent('footer-placeholder', 'components/footer.html');
+  await loadComponent('game', 'components/game.html', { injectScripts: true });
+  await loadComponent('concept', 'components/concept.html');
   initTabs();
+  // ゲームコンポーネント読み込み後に Three.js を初期化
+  await import('./main.js');
 });

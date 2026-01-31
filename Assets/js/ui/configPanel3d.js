@@ -9,10 +9,8 @@ const BASE_PANEL_HEIGHT = 380;
 const BUTTON_RECTS = [
   { id: 'fullscreen', x: 20, y: 52, w: 115, h: 32 },
   { id: 'window', x: 145, y: 52, w: 115, h: 32 },
-  { id: 'bgm_minus', x: 20, y: 128, w: 36, h: 28 },
-  { id: 'bgm_plus', x: 224, y: 128, w: 36, h: 28 },
-  { id: 'se_minus', x: 20, y: 188, w: 36, h: 28 },
-  { id: 'se_plus', x: 224, y: 188, w: 36, h: 28 },
+  { id: 'bgm_slider', x: 20, y: 128, w: 240, h: 20 },
+  { id: 'se_slider', x: 20, y: 188, w: 240, h: 20 },
   { id: 'quality_low', x: 20, y: 268, w: 72, h: 32 },
   { id: 'quality_med', x: 104, y: 268, w: 72, h: 32 },
   { id: 'quality_high', x: 188, y: 268, w: 72, h: 32 }
@@ -71,21 +69,11 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('BGM', 20, 118);
-  drawSmallButton(ctx, 20, 128, 36, 28, '−');
-  ctx.fillStyle = '#e0e0e0';
-  ctx.textAlign = 'center';
-  ctx.fillText(String(state.bgmVolume), BASE_PANEL_WIDTH / 2, 142);
-  ctx.textAlign = 'left';
-  drawSmallButton(ctx, 224, 128, 36, 28, '+');
+  drawSlider(ctx, 20, 128, 240, 20, state.bgmVolume);
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('SE', 20, 178);
-  drawSmallButton(ctx, 20, 188, 36, 28, '−');
-  ctx.fillStyle = '#e0e0e0';
-  ctx.textAlign = 'center';
-  ctx.fillText(String(state.seVolume), BASE_PANEL_WIDTH / 2, 202);
-  ctx.textAlign = 'left';
-  drawSmallButton(ctx, 224, 188, 36, 28, '+');
+  drawSlider(ctx, 20, 188, 240, 20, state.seVolume);
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('画質', 20, 254);
@@ -140,12 +128,50 @@ function drawSmallButton(ctx, x, y, w, h, label) {
   ctx.fillText(label, x + w / 2, y + h / 2);
 }
 
+/** スライダー描画（0〜100、トラック＋サム） */
+function drawSlider(ctx, x, y, w, h, valuePercent) {
+  const value = Math.max(0, Math.min(100, valuePercent));
+  const thumbRadius = 8;
+  const trackPadding = 4;
+  const trackY = y + h / 2;
+  const trackLeft = x + trackPadding + thumbRadius;
+  const trackRight = x + w - trackPadding - thumbRadius;
+  const trackW = trackRight - trackLeft;
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.stroke();
+
+  const thumbX = trackLeft + (value / 100) * trackW;
+  ctx.fillStyle = 'rgba(232, 213, 183, 0.9)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(thumbX, trackY, thumbRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = '11px "Yu Gothic", "Meiryo", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(Math.round(value)), x + w - 4, trackY);
+  ctx.textAlign = 'left';
+}
+
 /**
  * ヒット座標（パネルローカル -0.5〜0.5）からアクションを取得する
  * @param {THREE.Vector3} localPoint - パネルメッシュのローカル座標
  * @param {number} panelWidth - 現在のパネル幅（スケール後）
  * @param {number} panelHeight - 現在のパネル高さ（スケール後）
  * @returns {string|null} アクション ID または null
+ */
+/**
+ * ヒット座標からアクションを取得。スライダーの場合は { id, value } を返す
+ * @returns {string|{ id: string, value: number }|null}
  */
 function getActionAtLocal(localPoint, panelWidth, panelHeight, basePanelW, basePanelH) {
   const u = (localPoint.x + 0.5);
@@ -160,6 +186,11 @@ function getActionAtLocal(localPoint, panelWidth, panelHeight, basePanelW, baseP
     const rw = rect.w * scaleX;
     const rh = rect.h * scaleY;
     if (px >= rx && px <= rx + rw && py >= ry && py <= ry + rh) {
+      if (rect.id === 'bgm_slider' || rect.id === 'se_slider') {
+        const t = (px - rx) / rw;
+        const value = Math.round(Math.max(0, Math.min(100, t * 100)));
+        return { id: rect.id, value };
+      }
       return rect.id;
     }
   }
@@ -234,12 +265,33 @@ export function createConfigPanel3d(container) {
   /**
    * ワールド座標の交点をパネルローカルに変換し、アクションを返す
    * @param {THREE.Vector3} worldPoint - レイとメッシュの交点（ワールド座標）
-   * @returns {string|null}
+   * @returns {string|{ id: string, value: number }|null}
    */
   function getActionAt(worldPoint) {
     const inv = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
     const local = worldPoint.clone().applyMatrix4(inv);
     return getActionAtLocal(local, currentPanelWidth, currentPanelHeight, BASE_PANEL_WIDTH, BASE_PANEL_HEIGHT);
+  }
+
+  /**
+   * ドラッグ用: パネル上のワールド座標からスライダー値（0〜100）を算出する
+   * @param {THREE.Vector3} worldPoint - レイとメッシュの交点（ワールド座標）
+   * @param {string} sliderId - 'bgm_slider' | 'se_slider'
+   * @returns {number} 0〜100
+   */
+  function getSliderValueFromPoint(worldPoint, sliderId) {
+    const inv = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
+    const local = worldPoint.clone().applyMatrix4(inv);
+    const u = (local.x + 0.5);
+    const v = (0.5 - local.y);
+    const px = u * currentPanelWidth;
+    const scaleX = currentPanelWidth / BASE_PANEL_WIDTH;
+    const rect = BUTTON_RECTS.find((r) => r.id === sliderId);
+    if (!rect) return 0;
+    const rx = rect.x * scaleX;
+    const rw = rect.w * scaleX;
+    const t = (px - rx) / rw;
+    return Math.round(Math.max(0, Math.min(100, t * 100)));
   }
 
   function update(width, height) {
@@ -272,6 +324,7 @@ export function createConfigPanel3d(container) {
     toggle,
     update,
     getActionAt,
+    getSliderValueFromPoint,
     getState: () => ({ ...state }),
     setState: (s) => {
       Object.assign(state, s);

@@ -63,34 +63,32 @@ function isPointerOverConfigButton(clientX, clientY) {
 }
 
 function handlePanelAction(action) {
-  if (action === 'fullscreen') {
+  const id = typeof action === 'object' && action !== null ? action.id : action;
+  const value = typeof action === 'object' && action !== null ? action.value : undefined;
+
+  if (id === 'fullscreen') {
     configPanel.setState({ displayMode: 'fullscreen' });
     configPanel.applyDisplayMode(container);
-  } else if (action === 'window') {
+  } else if (id === 'window') {
     configPanel.setState({ displayMode: 'window' });
     configPanel.applyDisplayMode(container);
-  } else if (action === 'bgm_minus') {
-    const s = configPanel.getState();
-    configPanel.setState({ bgmVolume: Math.max(0, s.bgmVolume - 10) });
-  } else if (action === 'bgm_plus') {
-    const s = configPanel.getState();
-    configPanel.setState({ bgmVolume: Math.min(100, s.bgmVolume + 10) });
-  } else if (action === 'se_minus') {
-    const s = configPanel.getState();
-    configPanel.setState({ seVolume: Math.max(0, s.seVolume - 10) });
-  } else if (action === 'se_plus') {
-    const s = configPanel.getState();
-    configPanel.setState({ seVolume: Math.min(100, s.seVolume + 10) });
-  } else if (action === 'quality_low') {
+  } else if (id === 'bgm_slider' && value !== undefined) {
+    configPanel.setState({ bgmVolume: value });
+  } else if (id === 'se_slider' && value !== undefined) {
+    configPanel.setState({ seVolume: value });
+  } else if (id === 'quality_low') {
     configPanel.setState({ graphicsQuality: 0 });
-  } else if (action === 'quality_med') {
+  } else if (id === 'quality_med') {
     configPanel.setState({ graphicsQuality: 1 });
-  } else if (action === 'quality_high') {
+  } else if (id === 'quality_high') {
     configPanel.setState({ graphicsQuality: 2 });
   }
 }
 
-canvas.addEventListener('click', (e) => {
+let draggingSlider = null;
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
   getPointerNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(pointer, configButtonOrthoCamera);
 
@@ -98,7 +96,62 @@ canvas.addEventListener('click', (e) => {
     const panelHits = raycaster.intersectObject(configPanel.mesh);
     if (panelHits.length > 0) {
       const action = configPanel.getActionAt(panelHits[0].point);
-      if (action) handlePanelAction(action);
+      if (action) {
+        const id = typeof action === 'object' && action !== null ? action.id : action;
+        if (id === 'bgm_slider' || id === 'se_slider') {
+          draggingSlider = id;
+          handlePanelAction(action);
+        }
+      }
+    }
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  getPointerNDC(e.clientX, e.clientY);
+  raycaster.setFromCamera(pointer, configButtonOrthoCamera);
+
+  if (draggingSlider) {
+    const panelHits = raycaster.intersectObject(configPanel.mesh);
+    if (panelHits.length > 0) {
+      const value = configPanel.getSliderValueFromPoint(panelHits[0].point, draggingSlider);
+      if (draggingSlider === 'bgm_slider') {
+        configPanel.setState({ bgmVolume: value });
+      } else {
+        configPanel.setState({ seVolume: value });
+      }
+    }
+  }
+
+  const overButton = raycaster.intersectObject(configButtonMesh).length > 0;
+  const overPanel = configPanel.panelGroup.visible && raycaster.intersectObject(configPanel.mesh).length > 0;
+  container.style.cursor = draggingSlider ? 'grabbing' : overButton || overPanel ? 'pointer' : 'default';
+});
+
+canvas.addEventListener('pointerup', () => {
+  draggingSlider = null;
+});
+
+canvas.addEventListener('pointerleave', () => {
+  draggingSlider = null;
+});
+
+canvas.addEventListener('click', (e) => {
+  if (e.button !== 0) return;
+  getPointerNDC(e.clientX, e.clientY);
+  raycaster.setFromCamera(pointer, configButtonOrthoCamera);
+
+  if (configPanel.panelGroup.visible) {
+    if (draggingSlider) return;
+    const panelHits = raycaster.intersectObject(configPanel.mesh);
+    if (panelHits.length > 0) {
+      const action = configPanel.getActionAt(panelHits[0].point);
+      if (action) {
+        const id = typeof action === 'object' && action !== null ? action.id : action;
+        if (id !== 'bgm_slider' && id !== 'se_slider') {
+          handlePanelAction(action);
+        }
+      }
       return;
     }
     configPanel.hide();
@@ -109,14 +162,6 @@ canvas.addEventListener('click', (e) => {
     configPanel.syncDisplayModeFromDocument();
     configPanel.toggle();
   }
-});
-
-canvas.addEventListener('pointermove', (e) => {
-  getPointerNDC(e.clientX, e.clientY);
-  raycaster.setFromCamera(pointer, configButtonOrthoCamera);
-  const overButton = raycaster.intersectObject(configButtonMesh).length > 0;
-  const overPanel = configPanel.panelGroup.visible && raycaster.intersectObject(configPanel.mesh).length > 0;
-  container.style.cursor = overButton || overPanel ? 'pointer' : 'default';
 });
 
 // リサイズハンドラ（解像度比率を維持してコンテナにフィット）

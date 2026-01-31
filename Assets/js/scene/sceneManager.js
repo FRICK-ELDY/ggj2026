@@ -16,6 +16,30 @@ export class SceneManager {
     this.container = container;
     this.currentScene = null;
     this.currentSceneName = null;
+    
+    // グローバルなコンフィグ状態（シーン間で共有）
+    this.configState = {
+      displayMode: 'window',
+      bgmVolume: 80,
+      seVolume: 80,
+      messageSpeed: 80,
+    };
+  }
+
+  /**
+   * コンフィグ状態を取得
+   * @returns {Object}
+   */
+  getConfigState() {
+    return { ...this.configState };
+  }
+
+  /**
+   * コンフィグ状態を更新
+   * @param {Object} newState
+   */
+  updateConfigState(newState) {
+    Object.assign(this.configState, newState);
   }
 
   /**
@@ -39,21 +63,24 @@ export class SceneManager {
         this.currentScene = await createTitleScene(
           this.canvas,
           this.container,
-          (nextScene) => this.changeScene(nextScene)
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState)
         );
         this.currentSceneName = 'title';
       } else if (sceneName === 'intro') {
         this.currentScene = createIntroScene(
           this.canvas,
           this.container,
-          (nextScene) => this.changeScene(nextScene)
+          (nextScene) => this.changeScene(nextScene),
+          this.getConfigState()
         );
         this.currentSceneName = 'intro';
       } else if (sceneName === 'game') {
         this.currentScene = await createGameScene(
           this.canvas,
           this.container,
-          (nextScene) => this.changeScene(nextScene)
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState)
         );
         this.currentSceneName = 'game';
       } else {

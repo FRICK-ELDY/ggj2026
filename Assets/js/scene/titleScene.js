@@ -8,9 +8,10 @@ import { createConfigButton3d } from '../ui/configButton3d.js';
  * @param {HTMLCanvasElement} canvas - レンダリング対象のキャンバス
  * @param {HTMLElement} container - ゲームコンテナ
  * @param {Function} onSceneChange - シーン変更コールバック (sceneName: string) => void
+ * @param {Function} onConfigChange - コンフィグ変更コールバック (configState: Object) => void
  * @returns {Promise<Object>} シーンオブジェクト
  */
-export async function createTitleScene(canvas, container, onSceneChange) {
+export async function createTitleScene(canvas, container, onSceneChange, onConfigChange = null) {
   // シーン作成
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a2e);
@@ -217,15 +218,20 @@ export async function createTitleScene(canvas, container, onSceneChange) {
     if (id === 'fullscreen') {
       configPanel.setState({ displayMode: 'fullscreen' });
       configPanel.applyDisplayMode(container);
+      if (onConfigChange) onConfigChange(configPanel.getState());
     } else if (id === 'window') {
       configPanel.setState({ displayMode: 'window' });
       configPanel.applyDisplayMode(container);
+      if (onConfigChange) onConfigChange(configPanel.getState());
     } else if (id === 'bgm_slider' && value !== undefined) {
       configPanel.setState({ bgmVolume: value });
+      if (onConfigChange) onConfigChange(configPanel.getState());
     } else if (id === 'se_slider' && value !== undefined) {
       configPanel.setState({ seVolume: value });
+      if (onConfigChange) onConfigChange(configPanel.getState());
     } else if (id === 'message_speed_slider' && value !== undefined) {
       configPanel.setState({ messageSpeed: value });
+      if (onConfigChange) onConfigChange(configPanel.getState());
     } else if (id === 'back_to_title') {
       // タイトル画面では既にタイトルなので、パネルを閉じるだけ
       configPanel.hide();

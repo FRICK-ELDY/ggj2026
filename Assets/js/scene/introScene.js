@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
+import { TextAnimation } from '../animate/textAnimation.js';
 
 /**
  * イントロシーンを作成
  * @param {HTMLCanvasElement} canvas - レンダリング対象のキャンバス
  * @param {HTMLElement} container - ゲームコンテナ
  * @param {Function} onSceneChange - シーン変更コールバック (sceneName: string) => void
+ * @param {Object} configState - コンフィグ設定状態
  * @returns {Object} シーンオブジェクト
  */
-export function createIntroScene(canvas, container, onSceneChange) {
+export function createIntroScene(canvas, container, onSceneChange, configState = null) {
   // シーン作成
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a2e);
@@ -45,9 +47,10 @@ export function createIntroScene(canvas, container, onSceneChange) {
 
   // 現在のステージ（0: Global Game Jam 2026, 1: お題は Mask, 2: 始まるよ～）
   let currentStage = 0;
+  let currentFontSize = 48;
 
-  // テキストを描画する関数
-  function drawText(text, fontSize = 48) {
+  // テキストを描画する関数（現在表示中の文字列を描画）
+  function drawText(text, fontSize) {
     const textCanvas = document.createElement('canvas');
     textCanvas.width = 1024;
     textCanvas.height = 256;
@@ -70,19 +73,48 @@ export function createIntroScene(canvas, container, onSceneChange) {
     textMaterial.needsUpdate = true;
   }
 
-  // 初期テキストを表示
-  drawText('Global Game Jam 2026', 48);
+  // テキストアニメーションの初期化
+  const textAnimation = new TextAnimation(
+    // onUpdate: テキスト更新時
+    (currentText) => {
+      drawText(currentText, currentFontSize);
+    },
+    // onComplete: アニメーション完了時
+    () => {
+      // 完了処理（必要に応じて）
+    }
+  );
+
+  // コンフィグからメッセージスピードを取得して設定
+  if (configState && typeof configState.messageSpeed === 'number') {
+    textAnimation.setSpeed(configState.messageSpeed);
+  }
+
+  // テキストアニメーションを開始する関数
+  function startTextAnimation(text, fontSize) {
+    currentFontSize = fontSize;
+    textAnimation.start(text);
+  }
+
+  // 初期テキストアニメーションを開始
+  startTextAnimation('Global Game Jam 2026', 48);
 
   // クリックイベント
   function onClick() {
+    // アニメーション中はクリックを無視
+    if (textAnimation.isPlaying()) return;
+    
+    // アニメーション完了後のみ次に進める
+    if (!textAnimation.canProceed()) return;
+
     currentStage++;
     
     if (currentStage === 1) {
       // ステージ1: お題は Mask
-      drawText('お題は Mask', 56);
+      startTextAnimation('お題は Mask', 56);
     } else if (currentStage === 2) {
       // ステージ2: 始まるよ～
-      drawText('始まるよ～', 64);
+      startTextAnimation('始まるよ～', 64);
     } else if (currentStage === 3) {
       // ステージ3: ゲーム画面へ遷移
       onSceneChange('game');
@@ -112,8 +144,19 @@ export function createIntroScene(canvas, container, onSceneChange) {
 
   // アニメーションループ
   let animationId = null;
+  let lastTime = performance.now();
+  
   function animate() {
     animationId = requestAnimationFrame(animate);
+    
+    // デルタタイムの計算
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // 秒単位
+    lastTime = currentTime;
+    
+    // テキストアニメーションの更新
+    textAnimation.update(deltaTime);
+    
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);

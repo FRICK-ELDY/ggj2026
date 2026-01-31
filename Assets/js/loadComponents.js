@@ -16,7 +16,39 @@ async function loadComponent(elementId, path) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadComponent('header-placeholder', 'components/header.html');
-  loadComponent('footer-placeholder', 'components/footer.html');
+function initTabs() {
+  const tabLinks = document.querySelectorAll('.tab-link');
+  const gameSection = document.getElementById('game');
+  const conceptSection = document.getElementById('concept');
+
+  tabLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = link.getAttribute('href').slice(1);
+
+      tabLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+
+      if (target === 'game') {
+        gameSection.classList.remove('hidden');
+        conceptSection.classList.add('hidden');
+      } else if (target === 'concept') {
+        gameSection.classList.add('hidden');
+        conceptSection.classList.remove('hidden');
+      }
+    });
+  });
+
+  // 初期状態: ゲームを表示
+  const gameLink = document.querySelector('.tab-link[href="#game"]');
+  if (gameLink) {
+    gameLink.classList.add('active');
+    conceptSection.classList.add('hidden');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadComponent('header-placeholder', 'components/header.html');
+  await loadComponent('footer-placeholder', 'components/footer.html');
+  initTabs();
 });

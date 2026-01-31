@@ -3,7 +3,7 @@ import { getScaledSize } from './screenScale.js';
 
 /** パネルベースサイズ（ベース解像度 1024×576 でのピクセル・横長） */
 const BASE_PANEL_WIDTH = 480;
-const BASE_PANEL_HEIGHT = 240;
+const BASE_PANEL_HEIGHT = 280;
 
 /** ラベル開始 X（表示モード・SE・メッセージスピードの左端） */
 const LABEL_LEFT = 28;
@@ -37,7 +37,12 @@ const LAYOUT = {
   messageSlider: 200,
   messageRowCenter: 210,
   messageLine: 226,
+  backToTitleButton: 240,
 };
+
+/** タイトルに戻るボタンのサイズ */
+const BACK_BUTTON_WIDTH = 140;
+const BACK_BUTTON_HEIGHT = 28;
 
 /** クリック可能な領域（ベース座標: 左上原点） */
 const BUTTON_RECTS = [
@@ -63,6 +68,13 @@ const BUTTON_RECTS = [
     y: LAYOUT.messageSlider,
     w: CONTENT_WIDTH,
     h: 20,
+  },
+  {
+    id: 'back_to_title',
+    x: BASE_PANEL_WIDTH - BACK_BUTTON_WIDTH - 16,
+    y: LAYOUT.backToTitleButton,
+    w: BACK_BUTTON_WIDTH,
+    h: BACK_BUTTON_HEIGHT,
   },
 ];
 
@@ -188,6 +200,15 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
   );
   drawSectionLine(ctx, LAYOUT.messageLine);
 
+  // タイトルに戻るボタン（右下）
+  drawBackToTitleButton(
+    ctx,
+    BASE_PANEL_WIDTH - BACK_BUTTON_WIDTH - 16,
+    LAYOUT.backToTitleButton,
+    BACK_BUTTON_WIDTH,
+    BACK_BUTTON_HEIGHT
+  );
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
   return texture;
@@ -268,6 +289,21 @@ function drawSliderValue(ctx, rightX, y, valuePercent) {
   ctx.textBaseline = 'middle';
   ctx.fillText(String(value), rightX, y);
   ctx.textAlign = 'left';
+}
+
+/** タイトルに戻るボタンを描画 */
+function drawBackToTitleButton(ctx, x, y, w, h) {
+  ctx.fillStyle = 'rgba(180, 100, 100, 0.3)';
+  ctx.strokeStyle = 'rgba(255, 150, 150, 0.6)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffcccc';
+  ctx.font = '12px "Yu Gothic", "Meiryo", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('タイトルに戻る', x + w / 2, y + h / 2);
 }
 
 /**

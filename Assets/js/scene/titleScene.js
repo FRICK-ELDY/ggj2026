@@ -226,6 +226,9 @@ export async function createTitleScene(canvas, container, onSceneChange) {
       configPanel.setState({ seVolume: value });
     } else if (id === 'message_speed_slider' && value !== undefined) {
       configPanel.setState({ messageSpeed: value });
+    } else if (id === 'back_to_title') {
+      // タイトル画面では既にタイトルなので、パネルを閉じるだけ
+      configPanel.hide();
     }
   }
 

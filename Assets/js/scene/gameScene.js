@@ -82,6 +82,9 @@ export async function createGameScene(canvas, container, onSceneChange) {
       configPanel.setState({ seVolume: value });
     } else if (id === 'message_speed_slider' && value !== undefined) {
       configPanel.setState({ messageSpeed: value });
+    } else if (id === 'back_to_title') {
+      configPanel.hide();
+      onSceneChange('title');
     }
   }
 

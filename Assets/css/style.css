@@ -98,36 +98,7 @@ body {
   border-radius: 0;
 }
 
-/* 設定（歯車）ボタン */
-.settings-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #e0e0e0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  transition: background 0.2s;
-  z-index: 10;
-}
-
-.settings-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.settings-btn .settings-icon {
-  line-height: 1;
-}
-
-/* 設定パネル（歯車クリックで表示） */
+/* 設定パネル（Three.js Canvas 上の歯車クリックで表示） */
 .config-panel {
   position: absolute;
   top: 44px;

@@ -67,12 +67,11 @@ export function createConfigPanel(container) {
     panel.classList.toggle('is-open');
   }
 
-  // パネル外クリックで閉じる
+  // パネル外クリックで閉じる（Canvas 上の歯車クリックは main.js で処理するため除外）
   document.addEventListener('click', (e) => {
     if (!panel.classList.contains('is-open')) return;
     if (panel.contains(e.target)) return;
-    const settingsBtn = document.getElementById('game-settings-btn');
-    if (settingsBtn && settingsBtn.contains(e.target)) return;
+    if (e.target.id === 'game-canvas') return;
     hide();
   });
 

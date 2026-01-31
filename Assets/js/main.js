@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createBox } from './model/box.js';
 import { updateYawRollPitch } from './animate/rotate.js';
+import { createConfigPanel } from './ui/configPanel.js';
 
 // キャンバスサイズ
 const WIDTH = 1024;
@@ -35,15 +36,13 @@ function onResize() {
   renderer.setSize(width, height);
 }
 
-// 最大化ボタン
-const maximizeBtn = document.getElementById('game-maximize-btn');
-if (maximizeBtn) {
-  maximizeBtn.addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-      container.requestFullscreen?.() || container.webkitRequestFullscreen?.();
-    } else {
-      document.exitFullscreen?.() || document.webkitExitFullscreen?.();
-    }
+// 設定（歯車）ボタン → 設定パネルを表示
+const configPanel = createConfigPanel(container);
+const settingsBtn = document.getElementById('game-settings-btn');
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    configPanel.toggle();
   });
 }
 

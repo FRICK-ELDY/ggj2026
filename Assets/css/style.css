@@ -98,7 +98,8 @@ body {
   border-radius: 0;
 }
 
-.maximize-btn {
+/* 設定（歯車）ボタン */
+.settings-btn {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -118,12 +119,68 @@ body {
   z-index: 10;
 }
 
-.maximize-btn:hover {
+.settings-btn:hover {
   background: rgba(0, 0, 0, 0.7);
 }
 
-.maximize-btn .maximize-icon {
+.settings-btn .settings-icon {
   line-height: 1;
+}
+
+/* 設定パネル（歯車クリックで表示） */
+.config-panel {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  min-width: 180px;
+  padding: 12px;
+  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 11;
+  display: none;
+}
+
+.config-panel.is-open {
+  display: block;
+}
+
+.config-panel-title {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.config-panel-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-panel-btn {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e0e0e0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.config-panel-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.config-panel-btn.active {
+  background: rgba(232, 213, 183, 0.2);
+  border-color: #e8d5b7;
+  color: #e8d5b7;
 }
 
 #game-canvas {

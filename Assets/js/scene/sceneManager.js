@@ -40,6 +40,7 @@ export class SceneManager {
    */
   updateConfigState(newState) {
     Object.assign(this.configState, newState);
+    console.log('Config updated:', this.configState);
   }
 
   /**
@@ -59,20 +60,24 @@ export class SceneManager {
     console.log(`Loading scene: ${sceneName}`);
     
     try {
+      const configState = this.getConfigState();
+      
       if (sceneName === 'title') {
         this.currentScene = await createTitleScene(
           this.canvas,
           this.container,
           (nextScene) => this.changeScene(nextScene),
-          (newState) => this.updateConfigState(newState)
+          (newState) => this.updateConfigState(newState),
+          configState
         );
         this.currentSceneName = 'title';
       } else if (sceneName === 'intro') {
+        console.log('Creating intro scene with config:', configState);
         this.currentScene = createIntroScene(
           this.canvas,
           this.container,
           (nextScene) => this.changeScene(nextScene),
-          this.getConfigState()
+          configState
         );
         this.currentSceneName = 'intro';
       } else if (sceneName === 'game') {
@@ -80,7 +85,8 @@ export class SceneManager {
           this.canvas,
           this.container,
           (nextScene) => this.changeScene(nextScene),
-          (newState) => this.updateConfigState(newState)
+          (newState) => this.updateConfigState(newState),
+          configState
         );
         this.currentSceneName = 'game';
       } else {

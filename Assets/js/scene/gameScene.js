@@ -11,9 +11,10 @@ import { createConfigButton3d } from '../ui/configButton3d.js';
  * @param {HTMLElement} container - ゲームコンテナ
  * @param {Function} onSceneChange - シーン変更コールバック (sceneName: string) => void
  * @param {Function} onConfigChange - コンフィグ変更コールバック (configState: Object) => void
+ * @param {Object} initialConfigState - 初期コンフィグ状態
  * @returns {Promise<Object>} シーンオブジェクト
  */
-export async function createGameScene(canvas, container, onSceneChange, onConfigChange = null) {
+export async function createGameScene(canvas, container, onSceneChange, onConfigChange = null, initialConfigState = null) {
   // シーン作成
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x2d2d44);
@@ -48,6 +49,12 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   const configPanel = createConfigPanel3d(container);
   configButtonUiScene.add(configPanel.panelGroup);
   const initialSize = getFittedCanvasSize(container.clientWidth, container.clientHeight);
+  
+  // 初期コンフィグ状態を設定
+  if (initialConfigState) {
+    configPanel.setState(initialConfigState);
+  }
+  
   configPanel.update(initialSize.width, initialSize.height);
 
   // Raycaster
@@ -131,10 +138,13 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         const value = configPanel.getSliderValueFromPoint(panelHits[0].point, draggingSlider);
         if (draggingSlider === 'bgm_slider') {
           configPanel.setState({ bgmVolume: value });
+          if (onConfigChange) onConfigChange(configPanel.getState());
         } else if (draggingSlider === 'se_slider') {
           configPanel.setState({ seVolume: value });
+          if (onConfigChange) onConfigChange(configPanel.getState());
         } else if (draggingSlider === 'message_speed_slider') {
           configPanel.setState({ messageSpeed: value });
+          if (onConfigChange) onConfigChange(configPanel.getState());
         }
       }
     }

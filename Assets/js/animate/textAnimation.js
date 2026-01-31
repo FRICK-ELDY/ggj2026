@@ -39,7 +39,9 @@ export class TextAnimation {
     // スピード100 → 0.02秒、スピード0 → 0.2秒
     const minDelay = 0.02;
     const maxDelay = 0.2;
-    return maxDelay - (this.messageSpeed / 100) * (maxDelay - minDelay);
+    const delay = maxDelay - (this.messageSpeed / 100) * (maxDelay - minDelay);
+    console.log(`Char delay: ${delay}s (speed: ${this.messageSpeed})`);
+    return delay;
   }
 
   /**

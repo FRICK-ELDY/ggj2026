@@ -86,8 +86,12 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
   );
 
   // コンフィグからメッセージスピードを取得して設定
+  console.log('Intro scene received config:', configState);
   if (configState && typeof configState.messageSpeed === 'number') {
+    console.log('Setting message speed:', configState.messageSpeed);
     textAnimation.setSpeed(configState.messageSpeed);
+  } else {
+    console.log('Using default message speed');
   }
 
   // テキストアニメーションを開始する関数

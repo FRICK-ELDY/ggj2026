@@ -30,6 +30,41 @@ const material = new THREE.MeshBasicMaterial({
 const plane = new THREE.Mesh(geometry, material);
 scene.add(plane);
 
+// リサイズハンドラ（フルスクリーン切替時など）
+function onResize() {
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+// 最大化ボタン
+const maximizeBtn = document.getElementById('game-maximize-btn');
+if (maximizeBtn) {
+  maximizeBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      container.requestFullscreen?.() || container.webkitRequestFullscreen?.();
+    } else {
+      document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+    }
+  });
+}
+
+// ESC キーでフルスクリーン解除
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.fullscreenElement) {
+    document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+  }
+});
+
+// フルスクリーン変更時のリサイズ
+container.addEventListener('fullscreenchange', onResize);
+container.addEventListener('webkitfullscreenchange', onResize);
+
+// ウィンドウリサイズ時
+window.addEventListener('resize', onResize);
+
 // アニメーションループ
 function animate() {
   requestAnimationFrame(animate);

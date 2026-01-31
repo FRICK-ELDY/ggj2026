@@ -5,12 +5,17 @@ import { getScaledSize } from './screenScale.js';
 const BASE_PANEL_WIDTH = 280;
 const BASE_PANEL_HEIGHT = 380;
 
+/** スライダートラック幅（数値との間に余白を取るため 240 より短く） */
+const SLIDER_TRACK_WIDTH = 210;
+/** 数値表示をパネル右端に右揃えで表示する X 位置（右端） */
+const SLIDER_VALUE_RIGHT_X = BASE_PANEL_WIDTH - 8;
+
 /** クリック可能な領域（ベース座標: 左上原点） */
 const BUTTON_RECTS = [
   { id: 'fullscreen', x: 20, y: 52, w: 115, h: 32 },
   { id: 'window', x: 145, y: 52, w: 115, h: 32 },
-  { id: 'bgm_slider', x: 20, y: 128, w: 240, h: 20 },
-  { id: 'se_slider', x: 20, y: 188, w: 240, h: 20 },
+  { id: 'bgm_slider', x: 20, y: 128, w: SLIDER_TRACK_WIDTH, h: 20 },
+  { id: 'se_slider', x: 20, y: 188, w: SLIDER_TRACK_WIDTH, h: 20 },
   { id: 'quality_low', x: 20, y: 268, w: 72, h: 32 },
   { id: 'quality_med', x: 104, y: 268, w: 72, h: 32 },
   { id: 'quality_high', x: 188, y: 268, w: 72, h: 32 }
@@ -69,11 +74,13 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('BGM', 20, 118);
-  drawSlider(ctx, 20, 128, 240, 20, state.bgmVolume);
+  drawSlider(ctx, 20, 128, SLIDER_TRACK_WIDTH, 20, state.bgmVolume);
+  drawSliderValue(ctx, SLIDER_VALUE_RIGHT_X, 138, state.bgmVolume);
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('SE', 20, 178);
-  drawSlider(ctx, 20, 188, 240, 20, state.seVolume);
+  drawSlider(ctx, 20, 188, SLIDER_TRACK_WIDTH, 20, state.seVolume);
+  drawSliderValue(ctx, SLIDER_VALUE_RIGHT_X, 198, state.seVolume);
 
   ctx.fillStyle = '#a0a0a0';
   ctx.fillText('画質', 20, 254);
@@ -128,7 +135,7 @@ function drawSmallButton(ctx, x, y, w, h, label) {
   ctx.fillText(label, x + w / 2, y + h / 2);
 }
 
-/** スライダー描画（0〜100、トラック＋サム） */
+/** スライダー描画（0〜100、トラック＋サム。数値は別途 drawSliderValue で描画） */
 function drawSlider(ctx, x, y, w, h, valuePercent) {
   const value = Math.max(0, Math.min(100, valuePercent));
   const thumbRadius = 8;
@@ -153,12 +160,16 @@ function drawSlider(ctx, x, y, w, h, valuePercent) {
   ctx.arc(thumbX, trackY, thumbRadius, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+}
 
+/** スライダー数値をパネル右端に右揃えで描画（x は右端の位置） */
+function drawSliderValue(ctx, rightX, y, valuePercent) {
+  const value = Math.round(Math.max(0, Math.min(100, valuePercent)));
   ctx.fillStyle = '#e0e0e0';
-  ctx.font = '11px "Yu Gothic", "Meiryo", sans-serif';
+  ctx.font = '12px "Yu Gothic", "Meiryo", sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
-  ctx.fillText(String(Math.round(value)), x + w - 4, trackY);
+  ctx.fillText(String(value), rightX, y);
   ctx.textAlign = 'left';
 }
 

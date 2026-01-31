@@ -86,6 +86,8 @@ function handlePanelAction(action) {
 }
 
 let draggingSlider = null;
+/** スライダードラッグ後にパネル外で離した場合、直後の click でパネルを閉じないためのフラグ */
+let releasedAfterSliderDrag = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
@@ -129,10 +131,12 @@ canvas.addEventListener('pointermove', (e) => {
 });
 
 canvas.addEventListener('pointerup', () => {
+  if (draggingSlider) releasedAfterSliderDrag = true;
   draggingSlider = null;
 });
 
 canvas.addEventListener('pointerleave', () => {
+  if (draggingSlider) releasedAfterSliderDrag = true;
   draggingSlider = null;
 });
 
@@ -143,6 +147,10 @@ canvas.addEventListener('click', (e) => {
 
   if (configPanel.panelGroup.visible) {
     if (draggingSlider) return;
+    if (releasedAfterSliderDrag) {
+      releasedAfterSliderDrag = false;
+      return;
+    }
     const panelHits = raycaster.intersectObject(configPanel.mesh);
     if (panelHits.length > 0) {
       const action = configPanel.getActionAt(panelHits[0].point);

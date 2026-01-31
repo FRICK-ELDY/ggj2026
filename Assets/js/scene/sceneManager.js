@@ -1,4 +1,5 @@
 import { createTitleScene } from './titleScene.js';
+import { createIntroScene } from './introScene.js';
 import { createGameScene } from './gameScene.js';
 
 /**
@@ -19,7 +20,7 @@ export class SceneManager {
 
   /**
    * シーンを変更する
-   * @param {string} sceneName - 変更先のシーン名 ('title' | 'game')
+   * @param {string} sceneName - 変更先のシーン名 ('title' | 'intro' | 'game')
    */
   async changeScene(sceneName) {
     // 現在のシーンを停止・破棄
@@ -41,6 +42,13 @@ export class SceneManager {
           (nextScene) => this.changeScene(nextScene)
         );
         this.currentSceneName = 'title';
+      } else if (sceneName === 'intro') {
+        this.currentScene = createIntroScene(
+          this.canvas,
+          this.container,
+          (nextScene) => this.changeScene(nextScene)
+        );
+        this.currentSceneName = 'intro';
       } else if (sceneName === 'game') {
         this.currentScene = await createGameScene(
           this.canvas,

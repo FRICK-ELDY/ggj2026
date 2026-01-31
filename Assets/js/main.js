@@ -1,35 +1,32 @@
-import { createTitleScene } from './titleScene.js';
-import { createGameScene } from './gameScene.js';
-
-// キャンバス取得
-const canvas = document.getElementById('game-canvas');
-const container = document.getElementById('game-container');
-
-// 現在のシーン
-let currentScene = null;
+import { SceneManager } from './scene/sceneManager.js';
 
 /**
- * シーン変更関数
- * @param {string} sceneName - 変更先のシーン名 ('title' | 'game')
+ * アプリケーションのエントリーポイント
  */
-async function changeScene(sceneName) {
-  // 現在のシーンを停止・破棄
-  if (currentScene) {
-    currentScene.dispose();
-    currentScene = null;
+(function main() {
+  // DOM要素の取得
+  const canvas = document.getElementById('game-canvas');
+  const container = document.getElementById('game-container');
+
+  // 要素の存在確認
+  if (!canvas) {
+    console.error('Canvas element not found: #game-canvas');
+    return;
   }
 
-  // 新しいシーンを作成・開始
-  if (sceneName === 'title') {
-    currentScene = await createTitleScene(canvas, container, changeScene);
-    currentScene.start();
-  } else if (sceneName === 'game') {
-    currentScene = await createGameScene(canvas, container, changeScene);
-    currentScene.start();
-  } else {
-    console.error(`Unknown scene: ${sceneName}`);
+  if (!container) {
+    console.error('Container element not found: #game-container');
+    return;
   }
-}
 
-// 初期シーンをタイトルに設定
-changeScene('title');
+  // シーンマネージャーの初期化
+  const sceneManager = new SceneManager(canvas, container);
+
+  // 初期シーンをタイトルに設定
+  sceneManager.changeScene('title');
+
+  // グローバルに公開（デバッグ用）
+  if (typeof window !== 'undefined') {
+    window.sceneManager = sceneManager;
+  }
+})();

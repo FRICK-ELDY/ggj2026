@@ -71,5 +71,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent('concept', 'components/concept.html');
   initTabs();
   // ゲームコンポーネント読み込み後に Three.js を初期化
-  await import('./main.js');
+  await import('../main.js');
 });

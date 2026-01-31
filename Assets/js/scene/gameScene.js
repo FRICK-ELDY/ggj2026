@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { createBox } from './model/box.js';
-import { updateYawRollPitch } from './animate/rotate.js';
-import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from './ui/screenScale.js';
-import { createConfigPanel3d } from './ui/configPanel3d.js';
-import { createConfigButton3d } from './ui/configButton3d.js';
+import { createBox } from '../model/box.js';
+import { updateYawRollPitch } from '../animate/rotate.js';
+import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
+import { createConfigPanel3d } from '../ui/configPanel3d.js';
+import { createConfigButton3d } from '../ui/configButton3d.js';
 
 /**
  * ゲームシーンを作成

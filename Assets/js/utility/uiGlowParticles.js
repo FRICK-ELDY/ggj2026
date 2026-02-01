@@ -22,6 +22,7 @@ export class UiGlowParticles {
     const {
       count = 140,
       size = 0.1,
+      sizeAttenuation = true,
       color = 0xf7f2c6,
       z = -0.02,
       baseSpeedY = 0.06,
@@ -51,6 +52,7 @@ export class UiGlowParticles {
     this.material = new THREE.PointsMaterial({
       map: this.texture,
       size: this.size,
+      sizeAttenuation,
       transparent: true,
       depthTest: false,
       depthWrite: false,

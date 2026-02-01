@@ -3,10 +3,11 @@ import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSiz
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
+import { UiGlowParticles } from '../utility/uiGlowParticles.js';
 
 export async function createFinScene(canvas, container, onSceneChange, onConfigChange = null, initialConfigState = null) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2d2d44);
+  scene.background = new THREE.Color(0x000000);
 
   const camera = new THREE.PerspectiveCamera(60, BASE_RESOLUTION_W / BASE_RESOLUTION_H, 0.1, 1000);
   camera.position.z = 5;
@@ -29,22 +30,18 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
   }
   configPanel.update(initialSize.width, initialSize.height);
 
-  // FIN テクスチャ
-  function makeFinTexture(finLabel, hintLabel, baseW, baseH) {
+  // FIN テクスチャ（ヒント文言なし）
+  function makeFinTexture(finLabel, baseW, baseH) {
     const canvas = document.createElement('canvas');
     canvas.width = baseW;
     canvas.height = baseH;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(26, 26, 46, 0.65)';
-    ctx.fillRect(0, 0, baseW, baseH);
+    // 背景は透明（枠なし）
     ctx.fillStyle = '#e8d5b7';
     ctx.font = 'bold 72px "Yu Gothic", "Meiryo", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(finLabel, baseW / 2, baseH / 2 - 24);
-    ctx.fillStyle = '#e0e0e0';
-    ctx.font = '18px "Yu Gothic", "Meiryo", sans-serif';
-    ctx.fillText(hintLabel, baseW / 2, baseH / 2 + 40);
+    ctx.fillText(finLabel, baseW / 2, baseH / 2);
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     return texture;
@@ -52,7 +49,7 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
 
   const finGeom = new THREE.PlaneGeometry(1, 1);
   const finMat = new THREE.MeshBasicMaterial({
-    map: makeFinTexture('Fin', 'クリックでタイトルへ', 720, 320),
+    map: makeFinTexture('Thank you for playing!', 1024, 320),
     transparent: true,
     side: THREE.DoubleSide,
     depthTest: false,
@@ -62,8 +59,23 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
   finMesh.renderOrder = 20;
   uiScene.add(finMesh);
 
+  // パーティクル（UI空間）
+  const particles = new UiGlowParticles({
+    count: 220,
+    size: 3.0,          // ピクセルサイズ（sizeAttenuation: false）
+    sizeAttenuation: false,
+    color: 0xe8d5b7,
+    z: -0.02,
+    baseSpeedY: 0.05,
+    randomSpeedY: 0.08,
+    randomSpeedX: 0.05,
+    distributionRatioX: 0.85,
+    additive: true
+  });
+  uiScene.add(particles.points);
+
   function updateLayout(width, height) {
-    const size = getScaledSize(720, 320, width, height);
+    const size = getScaledSize(1024, 320, width, height);
     finMesh.scale.set(size.width, size.height, 1);
     finMesh.position.set(0, 0, 0);
   }
@@ -126,7 +138,11 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
           }
         }
       }
+      return;
     }
+    // 設定パネル非表示時はどこでもタイトルへ
+    playClick();
+    onSceneChange('title');
   }
 
   function onPointerMove(e) {
@@ -216,6 +232,9 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
     orthoCamera.bottom = -height / 2;
     orthoCamera.updateProjectionMatrix();
     updateLayout(width, height);
+    particles.seedForAspect(width / height);
+    // ピクセル座標系に拡張
+    particles.points.scale.set(width / 2, height / 2, 1);
   }
 
   container.addEventListener('fullscreenchange', onResize);
@@ -224,8 +243,13 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
   onResize();
 
   let animationId = null;
+  let prevTimeMs = performance.now();
   function animate() {
     animationId = requestAnimationFrame(animate);
+    const now = performance.now();
+    const dt = Math.max(0, (now - prevTimeMs) / 1000);
+    prevTimeMs = now;
+    particles.update(dt);
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);
@@ -260,6 +284,7 @@ export async function createFinScene(canvas, container, onSceneChange, onConfigC
       if (finMat.map) finMat.map.dispose();
       configButtonMesh.geometry.dispose();
       configButtonMesh.material.dispose();
+      particles.dispose();
       configPanel.panelGroup.children.forEach(child => {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();

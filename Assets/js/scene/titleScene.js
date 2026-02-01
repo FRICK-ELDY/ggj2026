@@ -16,6 +16,25 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // シーン作成
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a2e);
+  // 背景テクスチャ（画面全体にフィット）
+  const bgTexture = await new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(
+      'Assets/texture/title_bg.png',
+      (tex) => resolve(tex),
+      undefined,
+      (err) => reject(err)
+    );
+  });
+  // 反転を修正
+  bgTexture.flipY = true;
+  // 背景テクスチャをSRGBとして扱う（バージョン差異に対応）
+  if ('colorSpace' in bgTexture && THREE.SRGBColorSpace !== undefined) {
+    bgTexture.colorSpace = THREE.SRGBColorSpace;
+  } else if ('encoding' in bgTexture && THREE.sRGBEncoding !== undefined) {
+    bgTexture.encoding = THREE.sRGBEncoding;
+  }
+  bgTexture.needsUpdate = true;
+  scene.background = bgTexture;
 
   // カメラ作成
   const camera = new THREE.PerspectiveCamera(
@@ -31,18 +50,29 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(initW, initH);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // 出力の色空間をSRGBに統一（バージョン差異に対応）
+  if ('outputColorSpace' in renderer && THREE.SRGBColorSpace !== undefined) {
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+  } else if ('outputEncoding' in renderer && THREE.sRGBEncoding !== undefined) {
+    renderer.outputEncoding = THREE.sRGBEncoding;
+  }
+  // トーンマッピングは無効（素材色を忠実表示）
+  if ('toneMapping' in renderer && THREE.NoToneMapping !== undefined) {
+    renderer.toneMapping = THREE.NoToneMapping;
+  }
 
   // UI用のオルソカメラとシーン
   const uiScene = new THREE.Scene();
   const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   orthoCamera.position.z = 5;
 
-  // タイトルテキストメッシュ（中央）
+  // タイトルテキストメッシュ（後で左上アンカーに再配置）
   const titleGroup = new THREE.Group();
-  const titleGeometry = new THREE.PlaneGeometry(1.5, 0.3);
+  // UIスケールに正しく追従させるため、1x1 を基準にして scale で実寸へ
+  const titleGeometry = new THREE.PlaneGeometry(1, 1);
   const titleMaterial = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
   const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-  titleMesh.position.set(0, 0.3, 0);
+  titleMesh.position.set(0, 0, 0);
   titleGroup.add(titleMesh);
 
   // タイトルテキスト（簡易的な表示）
@@ -63,6 +93,109 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   titleMaterial.transparent = true;
 
   uiScene.add(titleGroup);
+
+  // タイトル（Unity風アンカー＆ピボット設定）
+  // アンカー: 0=左/下, 1=右/上（Orthographic空間を[左=-aspect,右=aspect],[下=-1,上=1]に正規化）
+  const TITLE_ANCHOR = { x: 0, y: 1 }; // 左上
+  // ピボット: 0=左/下, 1=右/上（メッシュ内の基準点）
+  const TITLE_PIVOT = { x: 0, y: 1 };  // 左上
+  // ベース解像度基準のサイズ/余白（px）
+  const BASE_TITLE_WIDTH_PX = 360;
+  const BASE_TITLE_MARGIN_LEFT = 20;
+  const BASE_TITLE_MARGIN_TOP = 20;
+
+  // タイトル用 天使画像（オルソUIシーンに配置）
+  const angelGeometry = new THREE.PlaneGeometry(1, 1);
+  const angelTexture = await new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(
+      'Assets/texture/title_angel.png',
+      (tex) => resolve(tex),
+      undefined,
+      (err) => reject(err)
+    );
+  });
+  angelTexture.flipY = true;
+  // 天使画像テクスチャの色空間をSRGBに設定（バージョン差異に対応）
+  if ('colorSpace' in angelTexture && THREE.SRGBColorSpace !== undefined) {
+    angelTexture.colorSpace = THREE.SRGBColorSpace;
+  } else if ('encoding' in angelTexture && THREE.sRGBEncoding !== undefined) {
+    angelTexture.encoding = THREE.sRGBEncoding;
+  }
+  angelTexture.needsUpdate = true;
+  const angelMaterial = new THREE.MeshBasicMaterial({
+    map: angelTexture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false
+  });
+  const angelMesh = new THREE.Mesh(angelGeometry, angelMaterial);
+  angelMesh.name = 'titleAngel';
+  angelMesh.position.set(0, 0, -0.01); // タイトル文字の背面に薄く
+  uiScene.add(angelMesh);
+
+  function updateTitleTransform(canvasWidth, canvasHeight) {
+    if (!titleTexture || !titleTexture.image) return;
+
+    const aspect = canvasWidth / canvasHeight;
+    const orthoHeight = 2;
+    const orthoWidth = 2 * aspect;
+
+    const pixelToOrthoX = orthoWidth / canvasWidth;
+    const pixelToOrthoY = orthoHeight / canvasHeight;
+
+    // ベース解像度基準のスケール係数
+    const scaleRatio = canvasHeight / BASE_RESOLUTION_H;
+
+    // タイトルのサイズ（ピクセル）: 幅を基準にテクスチャ比で高さ決定
+    const imgW = titleTexture.image.width || 1;
+    const imgH = titleTexture.image.height || 1;
+    const scaledTitleWidthPx = BASE_TITLE_WIDTH_PX * scaleRatio;
+    const scaledTitleHeightPx = scaledTitleWidthPx * (imgH / imgW);
+
+    // オルソ座標へ変換
+    const titleWidthOrtho = scaledTitleWidthPx * pixelToOrthoX;
+    const titleHeightOrtho = scaledTitleHeightPx * pixelToOrthoY;
+    titleMesh.scale.set(titleWidthOrtho, titleHeightOrtho, 1);
+
+    // アンカー位置（正規化 0..1 を Ortho 座標へ）
+    const anchorX = -aspect + (2 * aspect) * TITLE_ANCHOR.x;
+    const anchorY = -1 + 2 * TITLE_ANCHOR.y;
+
+    // マージン（px → Ortho）
+    const marginLeftOrtho = (BASE_TITLE_MARGIN_LEFT * scaleRatio) * pixelToOrthoX;
+    const marginTopOrtho = (BASE_TITLE_MARGIN_TOP * scaleRatio) * pixelToOrthoY;
+
+    // ピボットによるオフセット（center基準 → 任意ピボットへ）
+    const pivotOffsetX = (0.5 - TITLE_PIVOT.x) * titleWidthOrtho;
+    const pivotOffsetY = (0.5 - TITLE_PIVOT.y) * titleHeightOrtho;
+
+    // Unity風: アンカー + マージン + ピボットオフセット
+    const groupX = anchorX + marginLeftOrtho + pivotOffsetX;
+    const groupY = anchorY - marginTopOrtho + pivotOffsetY;
+    titleGroup.position.set(groupX, groupY, 0);
+  }
+
+  function updateAngelTransform(canvasWidth, canvasHeight) {
+    if (!angelTexture || !angelTexture.image) return;
+
+    const aspect = canvasWidth / canvasHeight;
+    const orthoHeight = 2;
+    const orthoWidth = 2 * aspect;
+
+    const pixelToOrthoX = orthoWidth / canvasWidth;
+    const pixelToOrthoY = orthoHeight / canvasHeight;
+
+    const imgW = angelTexture.image.width || 1;
+    const imgH = angelTexture.image.height || 1;
+    // 画像の高さをキャンバスの高さに合わせる（フルフィット）
+    const scaledAngelHeightPx = canvasHeight;
+    const scaledAngelWidthPx = scaledAngelHeightPx * (imgW / imgH);
+
+    const angelWidthOrtho = scaledAngelWidthPx * pixelToOrthoX;
+    const angelHeightOrtho = scaledAngelHeightPx * pixelToOrthoY;
+
+    angelMesh.scale.set(angelWidthOrtho, angelHeightOrtho, 1);
+  }
 
   // コンフィグボタン（歯車）
   const {
@@ -423,6 +556,10 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
     // ボタングループの位置・スケール更新
     updateButtonGroupTransform(width, height);
+    // タイトル（左上）の位置・スケール更新
+    updateTitleTransform(width, height);
+    // 天使画像のスケール更新
+    updateAngelTransform(width, height);
 
     // コンフィグボタンとパネルの更新
     updateConfigButton(width, height);
@@ -491,6 +628,12 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       buttonTextures.forEach(({ texture }) => texture.dispose());
       configButtonMesh.geometry.dispose();
       configButtonMesh.material.dispose();
+      // タイトル天使画像のリソース解放
+      angelGeometry.dispose();
+      angelMaterial.dispose();
+      angelTexture.dispose();
+      // 背景のリソース解放
+      if (bgTexture) bgTexture.dispose();
       configPanel.panelGroup.children.forEach(child => {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();

@@ -78,7 +78,7 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
 
   // テキスト表示用のメッシュ
   const textGroup = new THREE.Group();
-  const textGeometry = new THREE.PlaneGeometry(1.8, 0.4);
+  const textGeometry = new THREE.PlaneGeometry(3.2, 0.4);
   const textMaterial = new THREE.MeshBasicMaterial({ color: 0xe0e0e0, transparent: true, depthTest: false, depthWrite: false });
   const textMesh = new THREE.Mesh(textGeometry, textMaterial);
   textMesh.position.set(0, 0, 0);
@@ -139,7 +139,7 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
   // テキストを描画する関数（現在表示中の文字列を描画）
   function drawText(text, fontSize) {
     const textCanvas = document.createElement('canvas');
-    textCanvas.width = 1024;
+    textCanvas.width = 2048;
     textCanvas.height = 256;
     const ctx = textCanvas.getContext('2d');
 
@@ -147,17 +147,11 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
     ctx.clearRect(0, 0, textCanvas.width, textCanvas.height);
     ctx.fillStyle = '#e0e0e0';
 
-    // テキスト自動フィット（左右90%に収まるまで縮小）
-    let fittedFontSize = fontSize;
-    ctx.font = `bold ${fittedFontSize}px "Yu Gothic", "Meiryo", sans-serif`;
-    const maxWidth = textCanvas.width * 0.9;
-    while (ctx.measureText(text).width > maxWidth && fittedFontSize > 20) {
-      fittedFontSize -= 2;
-      ctx.font = `bold ${fittedFontSize}px "Yu Gothic", "Meiryo", sans-serif`;
-    }
+    // フォントは固定サイズ（縮小・折返しなし）
+    ctx.font = `bold ${fontSize}px "Yu Gothic", "Meiryo", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
+    ctx.fillText(String(text ?? ''), Math.floor(textCanvas.width / 2), Math.floor(textCanvas.height / 2));
     
     if (textMaterial.map) {
       textMaterial.map.dispose();

@@ -4,7 +4,7 @@ import { updateYawRollPitch } from '../animate/rotate.js';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
-import { playHover, playClick } from '../utility/sound.js';
+import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
 
 /**
  * ゲームシーンを作成
@@ -112,6 +112,10 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
 
   function onPointerDown(e) {
     if (e.button !== 0) return;
+    // 自動再生ブロック対策：未再生ならここでBGM再生を試みる
+    if (!isBgmPlaying()) {
+      playBgm('Assets/sound/bgm/Elven-Sanctuary_loop.ogg', { loop: true });
+    }
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
 
@@ -281,6 +285,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   // シーン制御
   return {
     start() {
+      // ゲームシーンBGMを再生
+      playBgm('Assets/sound/bgm/Elven-Sanctuary_loop.ogg', { loop: true });
       animate();
     },
     stop() {
@@ -291,6 +297,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     },
     dispose() {
       this.stop();
+      // BGM停止
+      stopBgm();
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
@@ -313,3 +321,4 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     }
   };
 }
+

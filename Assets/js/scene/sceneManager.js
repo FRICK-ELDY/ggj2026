@@ -1,6 +1,6 @@
 import { createTitleScene } from './titleScene.js';
 import { createIntroScene } from './introScene.js';
-import { createGameScene } from './gameScene.js';
+import { createGameScene } from './mainScene.js';
 import { setSeVolumePercent, setBgmVolumePercent } from '../utility/sound.js';
 
 /**

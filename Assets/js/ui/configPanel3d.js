@@ -117,12 +117,13 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
 
   ctx.fillStyle = '#e0e0e0';
   ctx.font = 'bold 16px "Yu Gothic", "Meiryo", sans-serif';
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText('設定', 16, 16);
+  ctx.fillText('設定', BASE_PANEL_WIDTH / 2, 16);
   drawSectionLine(ctx, LAYOUT.titleLine);
 
   ctx.font = '12px "Yu Gothic", "Meiryo", sans-serif';
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#a0a0a0';
   ctx.textBaseline = 'middle';
   ctx.fillText('表示モード', LABEL_LEFT, LAYOUT.displayModeRowCenter);

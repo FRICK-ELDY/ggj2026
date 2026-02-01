@@ -273,7 +273,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // ボタン定義（右下に配置 - Unityスタイルのアンカー・ピボット）
   const buttons = [
     { id: 'start', label: 'スタート', action: () => onSceneChange('intro') },
-    { id: 'stage_select', label: 'ステージセレクト', action: () => showModal('stage_select') },
+    { id: 'stage_select', label: 'ギャラリー', action: () => showModal('stage_select') },
     { id: 'credit', label: 'クレジット', action: () => showModal('credit') }
   ];
 

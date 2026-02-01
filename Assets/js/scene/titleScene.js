@@ -5,6 +5,7 @@ import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
 import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
 import { createParallaxBackground } from '../utility/parallaxBackground.js';
+import { createCreditPanel3d } from '../ui/creditPanel.js';
 
 /**
  * タイトルシーンを作成
@@ -144,7 +145,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // ベース解像度基準のサイズ/余白（px）
   const BASE_TITLE_WIDTH_PX = 360;
   const BASE_TITLE_MARGIN_LEFT = -30;
-  const BASE_TITLE_MARGIN_TOP = 20;
+  const BASE_TITLE_MARGIN_TOP = 0;
 
   // タイトル用 天使画像（オルソUIシーンに配置）
   const angelGeometry = new THREE.PlaneGeometry(1, 1);
@@ -263,6 +264,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   }
   
   configPanel.update(initialSize.width, initialSize.height);
+
+  // クレジットパネル
+  const creditPanel = createCreditPanel3d();
+  configButtonUiScene.add(creditPanel.panelGroup);
+  creditPanel.update(initialSize.width, initialSize.height);
 
   // ボタン定義（右下に配置 - Unityスタイルのアンカー・ピボット）
   const buttons = [
@@ -385,8 +391,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
   // モーダル表示関数
   function showModal(modalId) {
+    if (modalId === 'credit') {
+      creditPanel.show();
+      return;
+    }
     console.log(`モーダル表示: ${modalId}`);
-    // TODO: モーダル実装
     alert(`${modalId} モーダル（実装予定）`);
   }
 
@@ -541,11 +550,13 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       playHover();
     }
     configButtonHovered = overConfigButton;
+    const creditHits = creditPanel.panelGroup.visible ? raycaster.intersectObject(creditPanel.mesh) : [];
+    const overCredit = creditHits.length > 0;
     const panelHits = configPanel.panelGroup.visible ? raycaster.intersectObject(configPanel.mesh) : [];
-    const overPanel = panelHits.length > 0;
+    const overPanel = panelHits.length > 0 || overCredit;
 
     // 設定パネル内のボタン（fullscreen / window / back_to_title）でホバーSE
-    if (overPanel && !draggingSlider) {
+    if (!draggingSlider && panelHits.length > 0) {
       const act = configPanel.getActionAt(panelHits[0].point);
       const id = typeof act === 'object' && act !== null ? act.id : act;
       const isPanelButton = id === 'fullscreen' || id === 'window' || id === 'back_to_title';
@@ -591,6 +602,25 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     if (e.button !== 0) return;
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
+
+    // クレジットパネルが開いている場合
+    if (creditPanel.panelGroup.visible) {
+      const creditHits = raycaster.intersectObject(creditPanel.mesh);
+      if (creditHits.length > 0) {
+        const action = creditPanel.getActionAt(creditHits[0].point);
+        if (action === 'close') {
+          creditPanel.hide();
+          playClick();
+          return;
+        }
+        // パネル内の他領域クリックは何もしない
+        return;
+      }
+      // パネル外クリックで閉じる
+      creditPanel.hide();
+      playClick();
+      return;
+    }
 
     // コンフィグパネルが開いている場合
     if (configPanel.panelGroup.visible) {
@@ -674,6 +704,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     // コンフィグボタンとパネルの更新
     updateConfigButton(width, height);
     configPanel.update(width, height);
+    creditPanel.update(width, height);
   }
 
   // ESC キーでフルスクリーン解除

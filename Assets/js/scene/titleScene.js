@@ -3,7 +3,7 @@ import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
-import { playHover, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
+import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
 import { createParallaxBackground } from '../utility/parallaxBackground.js';
 
 /**
@@ -605,12 +605,14 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
         if (action) {
           const id = typeof action === 'object' && action !== null ? action.id : action;
           if (id !== 'bgm_slider' && id !== 'se_slider' && id !== 'message_speed_slider') {
+            playClick();
             handlePanelAction(action);
           }
         }
         return;
       }
       configPanel.hide();
+      playClick();
       return;
     }
 
@@ -618,6 +620,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     if (isPointerOverConfigButton(e.clientX, e.clientY)) {
       configPanel.syncDisplayModeFromDocument();
       configPanel.toggle();
+      playClick();
       return;
     }
 
@@ -628,6 +631,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     if (hits.length > 0) {
       const button = hits[0].object.userData;
       if (button.action) {
+        playClick();
         button.action();
       }
     }

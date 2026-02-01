@@ -4,7 +4,7 @@ import { updateYawRollPitch } from '../animate/rotate.js';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
-import { playHover } from '../utility/sound.js';
+import { playHover, playClick } from '../utility/sound.js';
 
 /**
  * ゲームシーンを作成
@@ -215,18 +215,21 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         if (action) {
           const id = typeof action === 'object' && action !== null ? action.id : action;
           if (id !== 'bgm_slider' && id !== 'se_slider') {
+            playClick();
             handlePanelAction(action);
           }
         }
         return;
       }
       configPanel.hide();
+      playClick();
       return;
     }
 
     if (isPointerOverConfigButton(e.clientX, e.clientY)) {
       configPanel.syncDisplayModeFromDocument();
       configPanel.toggle();
+      playClick();
     }
   }
 

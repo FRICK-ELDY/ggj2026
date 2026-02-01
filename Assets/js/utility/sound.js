@@ -8,6 +8,8 @@ let bgmAudio = null;
 
 const hoverBaseAudio = new Audio('Assets/sound/se/move_cursor_12.mp3');
 hoverBaseAudio.preload = 'auto';
+const clickBaseAudio = new Audio('Assets/sound/se/enter_31.mp3');
+clickBaseAudio.preload = 'auto';
 
 /**
  * SE音量をパーセントで設定（0..100）
@@ -27,6 +29,20 @@ export function playHover() {
     a.volume = seVolume;
     a.currentTime = 0;
     // 再生エラーは握り潰してUI操作をブロックしない
+    a.play().catch(() => {});
+  } catch {
+    // no-op
+  }
+}
+
+/**
+ * クリック音を再生（同時再生に対応するため cloneNode を利用）
+ */
+export function playClick() {
+  try {
+    const a = clickBaseAudio.cloneNode(true);
+    a.volume = seVolume;
+    a.currentTime = 0;
     a.play().catch(() => {});
   } catch {
     // no-op

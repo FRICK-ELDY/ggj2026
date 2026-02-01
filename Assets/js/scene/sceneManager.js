@@ -1,6 +1,10 @@
 import { createTitleScene } from './titleScene.js';
 import { createIntroScene } from './introScene.js';
 import { createGameScene } from './mainScene.js';
+import { createEnd1Scene } from './end1Scene.js';
+import { createEnd2Scene } from './end2Scene.js';
+import { createEnd3Scene } from './end3Scene.js';
+import { createFinScene } from './finScene.js';
 import { setSeVolumePercent, setBgmVolumePercent } from '../utility/sound.js';
 
 /**
@@ -57,7 +61,7 @@ export class SceneManager {
 
   /**
    * シーンを変更する
-   * @param {string} sceneName - 変更先のシーン名 ('title' | 'intro' | 'game')
+   * @param {string} sceneName - 変更先のシーン名 ('title' | 'intro' | 'game' | 'end1' | 'end2' | 'end3' | 'fin')
    */
   async changeScene(sceneName) {
     // 現在のシーンを停止・破棄
@@ -101,6 +105,42 @@ export class SceneManager {
           configState
         );
         this.currentSceneName = 'game';
+      } else if (sceneName === 'end1') {
+        this.currentScene = await createEnd1Scene(
+          this.canvas,
+          this.container,
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState),
+          configState
+        );
+        this.currentSceneName = 'end1';
+      } else if (sceneName === 'end2') {
+        this.currentScene = await createEnd2Scene(
+          this.canvas,
+          this.container,
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState),
+          configState
+        );
+        this.currentSceneName = 'end2';
+      } else if (sceneName === 'end3') {
+        this.currentScene = await createEnd3Scene(
+          this.canvas,
+          this.container,
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState),
+          configState
+        );
+        this.currentSceneName = 'end3';
+      } else if (sceneName === 'fin') {
+        this.currentScene = await createFinScene(
+          this.canvas,
+          this.container,
+          (nextScene) => this.changeScene(nextScene),
+          (newState) => this.updateConfigState(newState),
+          configState
+        );
+        this.currentSceneName = 'fin';
       } else {
         throw new Error(`Unknown scene: ${sceneName}`);
       }

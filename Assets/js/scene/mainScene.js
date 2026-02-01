@@ -523,7 +523,15 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
       if (hitChoice.length > 0) {
         const label = hitChoice[0].object.userData?.label;
         playClick();
-        console.log('Selected:', label);
+        if (label === 'END1') {
+          onSceneChange('end1');
+        } else if (label === 'END2') {
+          onSceneChange('end2');
+        } else if (label === 'END3') {
+          onSceneChange('end3');
+        } else {
+          console.log('Selected:', label);
+        }
         return;
       }
     }

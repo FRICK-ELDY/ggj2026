@@ -4,6 +4,7 @@ import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
 import { playHover } from '../utility/sound.js';
+import { createParallaxBackground } from '../utility/parallaxBackground.js';
 
 /**
  * タイトルシーンを作成
@@ -18,25 +19,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // シーン作成
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a2e);
-  // 背景テクスチャ（画面全体にフィット）
-  const bgTexture = await new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(
-      'Assets/texture/title_bg.png',
-      (tex) => resolve(tex),
-      undefined,
-      (err) => reject(err)
-    );
+  // パララックス背景（ユーティリティから作成）
+  const parallaxBg = await createParallaxBackground({
+    imageUrl: 'Assets/texture/title_bg.png',
+    maxShiftPxY: 0
   });
-  // 反転を修正
-  bgTexture.flipY = true;
-  // 背景テクスチャをSRGBとして扱う（バージョン差異に対応）
-  if ('colorSpace' in bgTexture && THREE.SRGBColorSpace !== undefined) {
-    bgTexture.colorSpace = THREE.SRGBColorSpace;
-  } else if ('encoding' in bgTexture && THREE.sRGBEncoding !== undefined) {
-    bgTexture.encoding = THREE.sRGBEncoding;
-  }
-  bgTexture.needsUpdate = true;
-  scene.background = bgTexture;
 
   // カメラ作成
   const camera = new THREE.PerspectiveCamera(
@@ -67,6 +54,10 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   const uiScene = new THREE.Scene();
   const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   orthoCamera.position.z = 5;
+
+  // UIシーンに背景平面を追加（最背面へ配置）
+  uiScene.add(parallaxBg.mesh);
+  parallaxBg.mesh.position.set(0, 0, -0.5);
 
   // タイトルテキストメッシュ（後で左上アンカーに再配置）
   const titleGroup = new THREE.Group();
@@ -225,6 +216,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     const angelHeightOrtho = scaledAngelHeightPx * pixelToOrthoY;
 
     angelMesh.scale.set(angelWidthOrtho, angelHeightOrtho, 1);
+  }
+
+  // 背景サイズ更新（パララックスユーティリティへ移譲）
+  function updateBackgroundTransform(canvasWidth, canvasHeight) {
+    parallaxBg.updateSize(canvasWidth, canvasHeight);
   }
 
   // コンフィグボタン（歯車）
@@ -493,6 +489,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
   function onPointerMove(e) {
     getPointerNDC(e.clientX, e.clientY);
+    // パララックスの目標を更新
+    parallaxBg.setPointerNdc(pointer.x, pointer.y);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
 
     if (draggingSlider) {
@@ -559,6 +557,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     }
     lastDraggedSliderId = null;
     draggingSlider = null;
+    // 中央へ戻す
+    parallaxBg.center();
   }
 
   function onClick(e) {
@@ -631,6 +631,9 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     // 粒子（UI空間）の再配置
     uiParticles.seedForAspect(aspect);
 
+    // 背景のサイズ更新
+    updateBackgroundTransform(width, height);
+
     // ボタングループの位置・スケール更新
     updateButtonGroupTransform(width, height);
     // タイトル（左上）の位置・スケール更新
@@ -665,6 +668,10 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     animationId = requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
     uiParticles.update(dt);
+
+    // 背景パララックス更新
+    parallaxBg.update(dt);
+
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);
@@ -713,7 +720,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       angelMaterial.dispose();
       angelTexture.dispose();
       // 背景のリソース解放
-      if (bgTexture) bgTexture.dispose();
+      parallaxBg.dispose();
       // 粒子のリソース解放
       uiParticles.dispose();
       configPanel.panelGroup.children.forEach(child => {

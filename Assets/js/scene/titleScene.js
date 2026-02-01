@@ -71,7 +71,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // タイトルテキスト（簡易的な表示）
   const titleCanvas = document.createElement('canvas');
   titleCanvas.width = 512;
-  titleCanvas.height = 128;
+  titleCanvas.height = 170;
   const titleCtx = titleCanvas.getContext('2d');
   titleCtx.fillStyle = 'rgba(255, 255, 255, 1.0)';
   const titleText = '心の仮面';
@@ -90,9 +90,30 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   titleCtx.miterLimit = 2;
   titleCtx.lineWidth = outlineWidth;
   titleCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-  titleCtx.strokeText(titleText, titleCanvas.width / 2, titleCanvas.height / 2);
+  // タイトルはやや上寄せに配置
+  const titleY = Math.floor(titleCanvas.height * 0.45);
+  titleCtx.strokeText(titleText, titleCanvas.width / 2, titleY);
   // 本文塗り
-  titleCtx.fillText(titleText, titleCanvas.width / 2, titleCanvas.height / 2);
+  titleCtx.fillText(titleText, titleCanvas.width / 2, titleY);
+
+  // サブタイトル「ショートノベルゲーム」
+  const subtitleText = 'ショートノベルゲーム';
+  let subFontSize = Math.max(16, Math.floor(fontSize * 0.34));
+  titleCtx.font = `bold ${subFontSize}px "Yu Gothic", "Meiryo", sans-serif`;
+  while (titleCtx.measureText(subtitleText).width > maxTextWidth && subFontSize > 12) {
+    subFontSize -= 1;
+    titleCtx.font = `bold ${subFontSize}px "Yu Gothic", "Meiryo", sans-serif`;
+  }
+  const subtitleY = Math.floor(titleCanvas.height * 0.78);
+  // アウトライン（先にストローク、上から塗り）
+  titleCtx.lineJoin = 'round';
+  titleCtx.miterLimit = 2;
+  titleCtx.lineWidth = Math.max(1, Math.floor(subFontSize * 0.12));
+  titleCtx.strokeStyle = 'rgba(0, 0, 0, 1.0)';
+  titleCtx.strokeText(subtitleText, titleCanvas.width / 2, subtitleY);
+  // 塗り
+  titleCtx.fillStyle = '#e0e0e0';
+  titleCtx.fillText(subtitleText, titleCanvas.width / 2, subtitleY);
   
   const titleTexture = new THREE.CanvasTexture(titleCanvas);
   if ('colorSpace' in titleTexture && THREE.SRGBColorSpace !== undefined) {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
+import { UiGlowParticles } from '../utility/uiGlowParticles.js';
 
 /**
  * タイトルシーンを作成
@@ -112,6 +113,15 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   titleMaterial.transparent = true;
 
   uiScene.add(titleGroup);
+
+  // 神聖な雰囲気用の光粒子（汎用クラスを使用）
+  const uiParticles = new UiGlowParticles({
+    count: 140,
+    size: 3,
+    color: 0xf7f2c6,
+    z: -0.02
+  });
+  uiScene.add(uiParticles.points);
 
   // タイトル（Unity風アンカー＆ピボット設定）
   // アンカー: 0=左/下, 1=右/上（Orthographic空間を[左=-aspect,右=aspect],[下=-1,上=1]に正規化）
@@ -573,6 +583,9 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     orthoCamera.right = aspect;
     orthoCamera.updateProjectionMatrix();
 
+    // 粒子（UI空間）の再配置
+    uiParticles.seedForAspect(aspect);
+
     // ボタングループの位置・スケール更新
     updateButtonGroupTransform(width, height);
     // タイトル（左上）の位置・スケール更新
@@ -602,8 +615,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
   // アニメーションループ
   let animationId = null;
+  const clock = new THREE.Clock();
   function animate() {
     animationId = requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    uiParticles.update(dt);
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);
@@ -653,6 +669,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       angelTexture.dispose();
       // 背景のリソース解放
       if (bgTexture) bgTexture.dispose();
+      // 粒子のリソース解放
+      uiParticles.dispose();
       configPanel.panelGroup.children.forEach(child => {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();

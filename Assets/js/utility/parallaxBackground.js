@@ -28,7 +28,8 @@ export async function createParallaxBackground({
   maxShiftPxX,
   maxShiftPxY,
   smoothing = 8,
-  renderOrder = -1000
+  renderOrder = -1000,
+  usePixelOrtho = true
 }) {
   const texture = await new Promise((resolve, reject) => {
     new THREE.TextureLoader().load(imageUrl, (t) => resolve(t), undefined, (e) => reject(e));
@@ -61,29 +62,49 @@ export async function createParallaxBackground({
 
   function updateSize(canvasWidth, canvasHeight) {
     const aspect = canvasWidth / canvasHeight;
-    const orthoHeight = 2;
-    const orthoWidth = 2 * aspect;
-
     const imgW = texture.image?.width || 1;
     const imgH = texture.image?.height || 1;
     const imgRatio = imgW / imgH;
 
-    let w, h;
-    if (aspect > imgRatio) {
-      h = orthoHeight * marginScale;
-      w = h * imgRatio;
+    let worldW, worldH;
+    if (usePixelOrtho) {
+      // カメラがピクセル座標系（left=-w/2..right=w/2）の場合
+      const targetW = canvasWidth * marginScale;
+      const targetH = canvasHeight * marginScale;
+      if (aspect > imgRatio) {
+        // 画面が横長 → 高さを基準に幅を算出
+        worldH = targetH;
+        worldW = worldH * imgRatio;
+      } else {
+        worldW = targetW;
+        worldH = worldW / imgRatio;
+      }
+      mesh.scale.set(worldW, worldH, 1);
+      // シフト量はピクセルそのまま
+      const mpx = (typeof maxShiftPxX === 'number' ? maxShiftPxX : maxShiftPx);
+      const mpy = (typeof maxShiftPxY === 'number' ? maxShiftPxY : maxShiftPx);
+      amplitudeX = mpx;
+      amplitudeY = mpy;
     } else {
-      w = orthoWidth * marginScale;
-      h = w / imgRatio;
+      // カメラが -1..1 ベースの正規化座標を使う場合（従来）
+      const orthoHeight = 2;
+      const orthoWidth = 2 * aspect;
+      let w, h;
+      if (aspect > imgRatio) {
+        h = orthoHeight * marginScale;
+        w = h * imgRatio;
+      } else {
+        w = orthoWidth * marginScale;
+        h = w / imgRatio;
+      }
+      mesh.scale.set(w, h, 1);
+      const pixelToOrthoX = orthoWidth / canvasWidth;
+      const pixelToOrthoY = orthoHeight / canvasHeight;
+      const mpx = (typeof maxShiftPxX === 'number' ? maxShiftPxX : maxShiftPx);
+      const mpy = (typeof maxShiftPxY === 'number' ? maxShiftPxY : maxShiftPx);
+      amplitudeX = mpx * pixelToOrthoX;
+      amplitudeY = mpy * pixelToOrthoY;
     }
-    mesh.scale.set(w, h, 1);
-
-    const pixelToOrthoX = orthoWidth / canvasWidth;
-    const pixelToOrthoY = orthoHeight / canvasHeight;
-    const mpx = (typeof maxShiftPxX === 'number' ? maxShiftPxX : maxShiftPx);
-    const mpy = (typeof maxShiftPxY === 'number' ? maxShiftPxY : maxShiftPx);
-    amplitudeX = mpx * pixelToOrthoX;
-    amplitudeY = mpy * pixelToOrthoY;
   }
 
   function setPointerNdc(x, y) {

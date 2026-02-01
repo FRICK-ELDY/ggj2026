@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSize, getScale } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
+import { createParallaxBackground } from '../utility/parallaxBackground.js';
 import { TextAnimation } from '../animate/textAnimation.js';
 import { playHover, playClick, playBgm, stopBgm, isBgmPlaying, playMessageLoop, stopMessageLoop } from '../utility/sound.js';
 
 export async function createEnd1Scene(canvas, container, onSceneChange, onConfigChange = null, initialConfigState = null) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2d2d44);
+  scene.background = new THREE.Color(0x1a1a2e);
 
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -36,6 +37,14 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
   } else {
     configPanel.panelGroup.renderOrder = 50;
   }
+
+  // タイトルと同じパララックス背景
+  const parallaxBg = await createParallaxBackground({
+    imageUrl: 'Assets/texture/title_bg.png',
+    maxShiftPxY: 0
+  });
+  uiScene.add(parallaxBg.mesh);
+  parallaxBg.mesh.position.set(0, 0, -0.5);
 
   const initialSize = getFittedCanvasSize(container.clientWidth, container.clientHeight);
   if (initialConfigState) {
@@ -229,6 +238,8 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
   function onPointerMove(e) {
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, orthoCamera);
+    // パララックスの目標を更新
+    parallaxBg.setPointerNdc(pointer.x, pointer.y);
     if (draggingSlider) {
       const panelHits = raycaster.intersectObject(configPanel.mesh);
       if (panelHits.length > 0) {
@@ -330,6 +341,8 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
     orthoCamera.bottom = -height / 2;
     orthoCamera.updateProjectionMatrix();
     updateNovelLayout(width, height);
+    // 背景サイズ更新
+    parallaxBg.updateSize(width, height);
   }
 
   document.addEventListener('keydown', (e) => {
@@ -350,6 +363,8 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
     const dt = Math.max(0, (now - prevTimeMs) / 1000);
     prevTimeMs = now;
     textAnimation.update(dt);
+    // 背景パララックス更新
+    parallaxBg.update(dt);
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);
@@ -383,6 +398,7 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
       window.removeEventListener('resize', onResize);
       if (vnMaterial.map) vnMaterial.map.dispose();
       vnGeometry.dispose();
+      parallaxBg.dispose();
       configButtonMesh.geometry.dispose();
       configButtonMesh.material.dispose();
       configPanel.panelGroup.children.forEach(child => {

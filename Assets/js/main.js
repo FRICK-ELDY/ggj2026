@@ -38,23 +38,39 @@ import * as THREE from 'three';
 
   // Three.js のグローバルローダーで進捗を監視
   let loadingStarted = false;
+  // 初期状態では非表示
+  hideOverlay();
+  // 一定時間以上かかった場合のみ表示（チラつき防止）
+  const OVERLAY_SHOW_DELAY_MS = 600;
+  let overlayDelayTimer = null;
   if (THREE && THREE.DefaultLoadingManager) {
     THREE.DefaultLoadingManager.onStart = function () {
       loadingStarted = true;
-      showOverlay();
-      setProgress(0);
+      if (overlayDelayTimer) clearTimeout(overlayDelayTimer);
+      overlayDelayTimer = setTimeout(() => {
+        showOverlay();
+        setProgress(0);
+      }, OVERLAY_SHOW_DELAY_MS);
     };
     THREE.DefaultLoadingManager.onProgress = function (_url, itemsLoaded, itemsTotal) {
       if (!loadingStarted) {
         loadingStarted = true;
-        showOverlay();
+        if (overlayDelayTimer) clearTimeout(overlayDelayTimer);
+        overlayDelayTimer = setTimeout(() => {
+          showOverlay();
+        }, OVERLAY_SHOW_DELAY_MS);
       }
       const pct = itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 100;
       setProgress(pct);
     };
     THREE.DefaultLoadingManager.onLoad = function () {
+      if (overlayDelayTimer) {
+        clearTimeout(overlayDelayTimer);
+        overlayDelayTimer = null;
+      }
       setProgress(100);
-      setTimeout(hideOverlay, 200);
+      // 即時に閉じる（見せない）
+      hideOverlay();
     };
   }
 
@@ -62,8 +78,6 @@ import * as THREE from 'three';
   const sceneManager = new SceneManager(canvas, container);
 
   // 初期シーンをタイトルに設定
-  showOverlay();
-  setProgress(0);
   sceneManager.changeScene('title');
 
   // グローバルに公開（デバッグ用）

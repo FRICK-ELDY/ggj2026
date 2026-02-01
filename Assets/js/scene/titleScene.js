@@ -24,7 +24,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // パララックス背景（ユーティリティから作成）
   const parallaxBg = await createParallaxBackground({
     imageUrl: 'Assets/texture/title_bg.png',
-    maxShiftPxY: 0
+    maxShiftPxY: 0,
+    usePixelOrtho: false
   });
 
   // カメラ作成

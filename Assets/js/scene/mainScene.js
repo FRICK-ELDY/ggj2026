@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextAnimation } from '../animate/textAnimation.js';
+import { createParallaxBackground } from '../utility/parallaxBackground.js';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSize, scaleValue } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
@@ -17,7 +18,7 @@ import { playHover, playClick, playBgm, stopBgm, isBgmPlaying, playMessageLoop, 
 export async function createGameScene(canvas, container, onSceneChange, onConfigChange = null, initialConfigState = null) {
   // シーン作成
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2d2d44);
+  scene.background = new THREE.Color(0x1a1a2e);
 
   // カメラ作成
   const camera = new THREE.PerspectiveCamera(
@@ -43,6 +44,14 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     mesh: configButtonMesh,
     update: updateConfigButton
   } = await createConfigButton3d();
+
+  // タイトルと同じパララックス背景
+  const parallaxBg = await createParallaxBackground({
+    imageUrl: 'Assets/texture/title_bg.png',
+    maxShiftPxY: 0
+  });
+  configButtonUiScene.add(parallaxBg.mesh);
+  parallaxBg.mesh.position.set(0, 0, -0.5);
 
   // 設定パネル
   const configPanel = createConfigPanel3d(container);
@@ -421,6 +430,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   function onPointerMove(e) {
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
+    // パララックスの目標を更新
+    parallaxBg.setPointerNdc(pointer.x, pointer.y);
 
     if (draggingSlider) {
       const panelHits = raycaster.intersectObject(configPanel.mesh);
@@ -568,6 +579,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     updateConfigButton(width, height);
     configPanel.update(width, height);
     updateNovelLayout(width, height);
+    // 背景サイズ更新
+    parallaxBg.updateSize(width, height);
   }
 
   // ESC キーでフルスクリーン解除
@@ -595,6 +608,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
 
     // テキストアニメーション更新
     textAnimation.update(dt);
+    // 背景パララックス更新
+    parallaxBg.update(dt);
 
     renderer.autoClear = false;
     renderer.clear();
@@ -638,6 +653,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         if (child.material) child.material.dispose();
       });
       renderer.dispose();
+      // 背景破棄
+      parallaxBg.dispose();
       if (end3Timer) {
         clearTimeout(end3Timer);
         end3Timer = null;

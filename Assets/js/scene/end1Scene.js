@@ -153,7 +153,7 @@ export async function createEnd1Scene(canvas, container, onSceneChange, onConfig
   let vnSpeaker = 'シスター';
   let vnBody = '';
   const lines = [
-    { name: 'シスター', text: '「……」' }
+    { name: 'シスター', text: '「END1」' }
   ];
   let lineCompleted = false;
   const textAnimation = new TextAnimation(

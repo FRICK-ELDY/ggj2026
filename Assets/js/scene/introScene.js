@@ -194,7 +194,7 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
   }
 
   // 初期テキストアニメーションを開始
-  startTextAnimation('神様何て、この世界の何処にもいない...', 48);
+  startTextAnimation('神様なんて、この世界の何処にもいない...', 48);
 
   // クリックイベント
   function onClick(e) {

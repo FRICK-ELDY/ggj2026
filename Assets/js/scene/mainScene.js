@@ -364,11 +364,15 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   const lines = [
     { name: NAME_PRIEST, text: '「シスター...シスター！！」' },
     { name: NAME_SISTER, text: '「...！」' },
-    { name: NAME_PRIEST, text: '「シスター、私の説教はつまらないですか？」' },
+    { name: NAME_PRIEST, text: '「シスター、私のミサの説教はつまらないですか？」' },
     { name: NAME_SISTER, text: '「いえ、そんなことは...」' },
     { name: NAME_PRIEST, text: '「そうですか...では、シスター」' },
     { name: NAME_PRIEST, text: '「神様は何処に居ると思いますか？」' },
-    { name: NAME_SISTER, text: '「...」' },
+    { name: NAME_SISTER, text: '「えっと、天国でしょうか？」' },
+    { name: NAME_PRIEST, text: '「はっはっは、ほとんどの人は君のように天を指さす。」' },
+    { name: NAME_PRIEST, text: '「しかしながら、私の考えは違って、神様は君と私の間にいると考えています。」' },
+    { name: NAME_PRIEST, text: '「その方がより神様を近くに感じれるでしょう？」' },
+    { name: NAME_SISTER, text: '(わたしはそれに...)' },
   ];
   let currentLineIndex = 0;
   let end3Timer = null;
@@ -403,8 +407,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   function showChoices() {
     vnChoicesGroup.visible = true;
     // 初期の2つ
-    if (!choiceMeshes[0]) choiceMeshes[0] = createChoiceMesh('END1');
-    if (!choiceMeshes[1]) choiceMeshes[1] = createChoiceMesh('END2');
+    if (!choiceMeshes[0]) choiceMeshes[0] = createChoiceMesh('賛同する');
+    if (!choiceMeshes[1]) choiceMeshes[1] = createChoiceMesh('拒絶する');
     // 追加
     if (!vnChoicesGroup.children.includes(choiceMeshes[0])) vnChoicesGroup.add(choiceMeshes[0]);
     if (!vnChoicesGroup.children.includes(choiceMeshes[1])) vnChoicesGroup.add(choiceMeshes[1]);
@@ -417,7 +421,7 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
       end3Timer = null;
     }
     end3Timer = setTimeout(() => {
-      if (!choiceMeshes[2]) choiceMeshes[2] = createChoiceMesh('END3');
+      if (!choiceMeshes[2]) choiceMeshes[2] = createChoiceMesh('分からない...');
       if (!vnChoicesGroup.children.includes(choiceMeshes[2])) vnChoicesGroup.add(choiceMeshes[2]);
       const size2 = getFittedCanvasSize(container.clientWidth, container.clientHeight);
       layoutChoiceMeshes(size2.width, size2.height, 3);

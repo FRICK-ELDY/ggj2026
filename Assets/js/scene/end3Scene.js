@@ -244,8 +244,38 @@ export async function createEnd3Scene(canvas, container, onSceneChange, onConfig
   // 会話
   let vnSpeaker = 'シスター';
   let vnBody = '';
+  let currentLineIndex = 0;
   const lines = [
-    { name: 'シスター', text: '「END3」' }
+    { name: 'シスター', text: '（……分からない）' },
+    {
+      name: 'シスター',
+      text: '（信じたい気持ちも、疑う理由も、どちらも本物だから。）'
+    },
+    {
+      name: 'シスター',
+      text: '「……分かりません。私には、まだ……」'
+    },
+    { name: '神父', text: '「それでいいのですよ」' },
+    {
+      name: 'シスター',
+      text: '（本当に？分からないままで、祈り続けることは許されるの？）'
+    },
+    {
+      name: '神父',
+      text: '「疑いは、信仰の影です。影があるということは、光もある」'
+    },
+    {
+      name: 'シスター',
+      text: '（影だけが濃くなって、光が見えなくなった時、人はどうすればいい？）'
+    },
+    {
+      name: 'シスター',
+      text: '（私はまだ、答えを持たない。）'
+    },
+    {
+      name: 'シスター',
+      text: '（でも――\n問いを捨てる気も、ない。）'
+    }
   ];
   let lineCompleted = false;
   const textAnimation = new TextAnimation(
@@ -265,6 +295,14 @@ export async function createEnd3Scene(canvas, container, onSceneChange, onConfig
     textAnimation.start(line.text || '');
     playMessageLoop();
     updateSpeakerEmphasis();
+  }
+  function advanceToNextLine() {
+    currentLineIndex++;
+    if (currentLineIndex < lines.length) {
+      showLine(currentLineIndex);
+    } else {
+      onSceneChange('fin');
+    }
   }
 
   const raycaster = new THREE.Raycaster();
@@ -400,7 +438,7 @@ export async function createEnd3Scene(canvas, container, onSceneChange, onConfig
       if (textAnimation.isPlaying()) {
         textAnimation.skip();
       } else if (lineCompleted) {
-        onSceneChange('fin');
+        advanceToNextLine();
       }
       return;
     }

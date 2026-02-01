@@ -241,11 +241,43 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
     layoutCharacters(size.width, size.height);
   }
 
-  // 会話
-  let vnSpeaker = 'シスター';
+  // シナリオ
+  let vnSpeaker = '';
   let vnBody = '';
+  let currentLineIndex = 0;
   const lines = [
-    { name: 'シスター', text: '「END2」' }
+    { name: 'シスター', text: '（いいえ……違う）' },
+    {
+      name: 'シスター',
+      text: '（人の間に神様がいるのなら、どうしてこんなにも残酷になれる？）'
+    },
+    {
+      name: 'シスター',
+      text: '（それなら私は、そんな神様はいらない。）'
+    },
+    {
+      name: 'シスター',
+      text: '「……申し訳ありません。私は、そうは思えません」'
+    },
+    { name: '神父', text: '「ほう？」' },
+    {
+      name: 'シスター',
+      text: '（神様を近くに感じたいから、人を正当化する。それは信仰じゃない。免罪符だ。）'
+    },
+    {
+      name: 'シスター',
+      text: '「人と人の間にいるのは、神様ではなく……欲と恐れだと思います」'
+    },
+    { name: '神父', text: '「……」' },
+    {
+      name: 'シスター',
+      text: '（この言葉で、私はもう戻れないのかもしれない。）'
+    },
+    { name: 'シスター', text: '（でも、それでもいい。）' },
+    {
+      name: 'シスター',
+      text: '（神様がいない世界でも、正しいことを選べるなら。）'
+    }
   ];
   let lineCompleted = false;
   const textAnimation = new TextAnimation(
@@ -265,6 +297,14 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
     textAnimation.start(line.text || '');
     playMessageLoop();
     updateSpeakerEmphasis();
+  }
+  function advanceToNextLine() {
+    currentLineIndex++;
+    if (currentLineIndex < lines.length) {
+      showLine(currentLineIndex);
+    } else {
+      onSceneChange('fin');
+    }
   }
 
   const raycaster = new THREE.Raycaster();
@@ -393,14 +433,14 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
       playClick();
       return;
     }
-    // ノベルパネルクリックでスキップ
+    // ノベルパネルクリックでスキップ or 次へ
     const vnHits = raycaster.intersectObject(vnMesh);
     if (vnHits.length > 0) {
       playClick();
       if (textAnimation.isPlaying()) {
         textAnimation.skip();
       } else if (lineCompleted) {
-        onSceneChange('fin');
+        advanceToNextLine();
       }
       return;
     }

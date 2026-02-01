@@ -1,5 +1,13 @@
 <div id="game-container">
   <canvas id="game-canvas"></canvas>
+  <div id="loading-overlay" aria-hidden="false">
+    <div class="loading-box">
+      <div class="loading-bar">
+        <div class="loading-bar__fill" id="loading-bar-fill"></div>
+      </div>
+      <div class="loading-percent" id="loading-percent">0%</div>
+    </div>
+  </div>
 </div>
 <script type="importmap" data-game-importmap>
   {

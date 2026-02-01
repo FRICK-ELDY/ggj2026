@@ -80,15 +80,34 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   titleCanvas.width = 512;
   titleCanvas.height = 128;
   const titleCtx = titleCanvas.getContext('2d');
-  titleCtx.fillStyle = '#1a1a2e';
-  titleCtx.fillRect(0, 0, titleCanvas.width, titleCanvas.height);
-  titleCtx.fillStyle = '#e0e0e0';
-  titleCtx.font = 'bold 64px sans-serif';
+  titleCtx.fillStyle = 'rgba(255, 255, 255, 1.0)';
+  const titleText = '心の仮面';
+  const maxTextWidth = titleCanvas.width * 0.9;
+  let fontSize = 70;
+  titleCtx.font = `bold ${fontSize}px "Yu Gothic", "Meiryo", sans-serif`;
+  while (titleCtx.measureText(titleText).width > maxTextWidth && fontSize > 24) {
+    fontSize -= 2;
+    titleCtx.font = `bold ${fontSize}px "Yu Gothic", "Meiryo", sans-serif`;
+  }
   titleCtx.textAlign = 'center';
   titleCtx.textBaseline = 'middle';
-  titleCtx.fillText('GGJ 2026', titleCanvas.width / 2, titleCanvas.height / 2);
+  // アウトライン（先にストローク、上から塗り）
+  const outlineWidth = Math.max(2, Math.floor(fontSize * 0.12));
+  titleCtx.lineJoin = 'round';
+  titleCtx.miterLimit = 2;
+  titleCtx.lineWidth = outlineWidth;
+  titleCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+  titleCtx.strokeText(titleText, titleCanvas.width / 2, titleCanvas.height / 2);
+  // 本文塗り
+  titleCtx.fillText(titleText, titleCanvas.width / 2, titleCanvas.height / 2);
   
   const titleTexture = new THREE.CanvasTexture(titleCanvas);
+  if ('colorSpace' in titleTexture && THREE.SRGBColorSpace !== undefined) {
+    titleTexture.colorSpace = THREE.SRGBColorSpace;
+  } else if ('encoding' in titleTexture && THREE.sRGBEncoding !== undefined) {
+    titleTexture.encoding = THREE.sRGBEncoding;
+  }
+  titleTexture.needsUpdate = true;
   titleMaterial.map = titleTexture;
   titleMaterial.transparent = true;
 
@@ -101,7 +120,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   const TITLE_PIVOT = { x: 0, y: 1 };  // 左上
   // ベース解像度基準のサイズ/余白（px）
   const BASE_TITLE_WIDTH_PX = 360;
-  const BASE_TITLE_MARGIN_LEFT = 20;
+  const BASE_TITLE_MARGIN_LEFT = -30;
   const BASE_TITLE_MARGIN_TOP = 20;
 
   // タイトル用 天使画像（オルソUIシーンに配置）

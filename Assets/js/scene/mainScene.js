@@ -75,6 +75,13 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   // ノベルUI（Three.js オルソ UI）
   const VN_BASE_WIDTH = 920;
   const VN_BASE_HEIGHT = 160;
+  // 立ち絵レイアウト
+  const CHAR_SIDE_MARGIN_PX = 24;
+  const CHAR_TARGET_HEIGHT_RATE = 0.9; // 画面高に対する基準の高さ割合
+  const CHAR_ACTIVE_SCALE = 1.0;
+  const CHAR_INACTIVE_SCALE = 0.92;
+  const NAME_SISTER = 'シスター';
+  const NAME_PRIEST = '神父';
   const VN_MARGIN_BOTTOM_PX = 16;
   const VN_PADDING_L = 16;
   const VN_PADDING_R = 16;
@@ -264,15 +271,104 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     }
   }
 
+  // 立ち絵（神父=左, シスター=右）
+  const charGeometry = new THREE.PlaneGeometry(1, 1);
+  const textureLoader = new THREE.TextureLoader();
+  const charLeft = {
+    name: NAME_PRIEST,
+    mesh: null,
+    material: null,
+    texture: null,
+    imgW: 1,
+    imgH: 1,
+    scaleFactor: CHAR_INACTIVE_SCALE
+  };
+  const charRight = {
+    name: NAME_SISTER,
+    mesh: null,
+    material: null,
+    texture: null,
+    imgW: 1,
+    imgH: 1,
+    scaleFactor: CHAR_INACTIVE_SCALE
+  };
+
+  async function loadCharacterTexture(url) {
+    const tex = await new Promise((resolve, reject) => {
+      textureLoader.load(url, (t) => resolve(t), undefined, (e) => reject(e));
+    });
+    // sRGB対応
+    if ('colorSpace' in tex && THREE.SRGBColorSpace !== undefined) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    } else if ('encoding' in tex && THREE.sRGBEncoding !== undefined) {
+      tex.encoding = THREE.sRGBEncoding;
+    }
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  function createCharacterMesh(tex) {
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(charGeometry, mat);
+    // ノベル（10）より後ろ、背景（-1000）より前
+    mesh.renderOrder = 0;
+    return { mesh, material: mat };
+  }
+
+  function layoutCharacters(width, height) {
+    if (!charLeft.mesh || !charRight.mesh) return;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    const marginX = scaleValue(CHAR_SIDE_MARGIN_PX, width, height);
+
+    const baseH = height * CHAR_TARGET_HEIGHT_RATE;
+
+    // 左（神父）
+    const leftH = baseH * charLeft.scaleFactor;
+    const leftW = leftH * (charLeft.imgW / charLeft.imgH);
+    charLeft.mesh.scale.set(leftW, leftH, 1);
+    charLeft.mesh.position.set(-halfW + marginX + leftW / 2, -halfH + leftH / 2, -0.2);
+
+    // 右（シスター）
+    const rightH = baseH * charRight.scaleFactor;
+    const rightW = rightH * (charRight.imgW / charRight.imgH);
+    charRight.mesh.scale.set(rightW, rightH, 1);
+    charRight.mesh.position.set(halfW - marginX - rightW / 2, -halfH + rightH / 2, -0.2);
+  }
+
+  function applyCharacterActiveState(target, isActive) {
+    if (!target || !target.material) return;
+    target.scaleFactor = isActive ? CHAR_ACTIVE_SCALE : CHAR_INACTIVE_SCALE;
+    // 乗算色で暗くする
+    target.material.color.set(isActive ? 0xffffff : 0x888888);
+    target.material.needsUpdate = true;
+  }
+
+  function updateSpeakerEmphasis() {
+    const speaker = vnSpeaker || '';
+    const leftActive = speaker === charLeft.name;
+    const rightActive = speaker === charRight.name;
+    applyCharacterActiveState(charLeft, leftActive);
+    applyCharacterActiveState(charRight, rightActive);
+    const size = getFittedCanvasSize(container.clientWidth, container.clientHeight);
+    layoutCharacters(size.width, size.height);
+  }
+
   // スクリプト（台詞）
   const lines = [
-    { name: '神父', text: '「シスター...シスター！！」' },
-    { name: 'シスター', text: '「...！」' },
-    { name: '神父', text: '「シスター、私の説教はつまらないですか？」' },
-    { name: 'シスター', text: '「いえ、そんなことは...」' },
-    { name: '神父', text: '「そうですか...では、シスター」' },
-    { name: '神父', text: '「神様は何処に居ると思いますか？」' },
-    { name: 'シスター', text: '「...」' },
+    { name: NAME_PRIEST, text: '「シスター...シスター！！」' },
+    { name: NAME_SISTER, text: '「...！」' },
+    { name: NAME_PRIEST, text: '「シスター、私の説教はつまらないですか？」' },
+    { name: NAME_SISTER, text: '「いえ、そんなことは...」' },
+    { name: NAME_PRIEST, text: '「そうですか...では、シスター」' },
+    { name: NAME_PRIEST, text: '「神様は何処に居ると思いますか？」' },
+    { name: NAME_SISTER, text: '「...」' },
   ];
   let currentLineIndex = 0;
   let end3Timer = null;
@@ -300,6 +396,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     redrawNovelTexture(vnSpeaker, vnBody);
     textAnimation.start(line.text || '');
     playMessageLoop();
+    // 話者強調を更新
+    updateSpeakerEmphasis();
   }
 
   function showChoices() {
@@ -581,6 +679,8 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     updateNovelLayout(width, height);
     // 背景サイズ更新
     parallaxBg.updateSize(width, height);
+    // 立ち絵レイアウト更新
+    layoutCharacters(width, height);
   }
 
   // ESC キーでフルスクリーン解除
@@ -595,6 +695,33 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   container.addEventListener('webkitfullscreenchange', onResize);
   window.addEventListener('resize', onResize);
 
+  // 立ち絵読み込み・作成
+  try {
+    charLeft.texture = await loadCharacterTexture('Assets/texture/chara_pleast.png');
+    charLeft.imgW = charLeft.texture.image?.width || 1;
+    charLeft.imgH = charLeft.texture.image?.height || 1;
+    {
+      const { mesh, material } = createCharacterMesh(charLeft.texture);
+      charLeft.mesh = mesh;
+      charLeft.material = material;
+      configButtonUiScene.add(charLeft.mesh);
+    }
+
+    charRight.texture = await loadCharacterTexture('Assets/texture/chara_sister.png');
+    charRight.imgW = charRight.texture.image?.width || 1;
+    charRight.imgH = charRight.texture.image?.height || 1;
+    {
+      const { mesh, material } = createCharacterMesh(charRight.texture);
+      charRight.mesh = mesh;
+      charRight.material = material;
+      configButtonUiScene.add(charRight.mesh);
+    }
+  } catch (e) {
+    console.error('立ち絵の読み込みに失敗しました:', e);
+  }
+
+  // 初期話者に合わせて強調状態を反映
+  updateSpeakerEmphasis();
   onResize();
 
   // アニメーションループ
@@ -669,6 +796,17 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         m.material.dispose();
       });
       stopMessageLoop();
+      // 立ち絵解放
+      if (charLeft.mesh) {
+        if (charLeft.material?.map) charLeft.material.map.dispose();
+        if (charLeft.mesh.geometry) charLeft.mesh.geometry.dispose();
+        if (charLeft.material) charLeft.material.dispose();
+      }
+      if (charRight.mesh) {
+        if (charRight.material?.map) charRight.material.map.dispose();
+        if (charRight.mesh.geometry) charRight.mesh.geometry.dispose();
+        if (charRight.material) charRight.material.dispose();
+      }
     }
   };
 }

@@ -95,7 +95,7 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
   particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
   const particleMaterial = new THREE.PointsMaterial({
     color: 0xffffff,
-    size: 0.02,
+    size: 1.2,
     transparent: true,
     opacity: 0.6,
     depthWrite: false,

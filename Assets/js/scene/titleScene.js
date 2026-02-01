@@ -3,7 +3,7 @@ import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
-import { playHover } from '../utility/sound.js';
+import { playHover, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
 import { createParallaxBackground } from '../utility/parallaxBackground.js';
 
 /**
@@ -97,7 +97,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   titleCtx.fillText(titleText, titleCanvas.width / 2, titleY);
 
   // サブタイトル「ショートノベルゲーム」
-  const subtitleText = 'ショートノベルゲーム';
+  const subtitleText = 'ショートノベルゲーム in GGJ 2026';
   let subFontSize = Math.max(16, Math.floor(fontSize * 0.34));
   titleCtx.font = `bold ${subFontSize}px "Yu Gothic", "Meiryo", sans-serif`;
   while (titleCtx.measureText(subtitleText).width > maxTextWidth && subFontSize > 12) {
@@ -488,6 +488,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
 
+    // 自動再生ブロック対策：未再生ならここで再生を試みる
+    if (!isBgmPlaying()) {
+      playBgm('Assets/sound/bgm/main-theme01.mp3', { loop: true });
+    }
+
     if (configPanel.panelGroup.visible) {
       const panelHits = raycaster.intersectObject(configPanel.mesh);
       if (panelHits.length > 0) {
@@ -706,6 +711,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // シーン制御
   return {
     start() {
+      // タイトルBGM再生（自動再生がブロックされる場合は pointerdown で再試行）
+      playBgm('Assets/sound/bgm/main-theme01.mp3', { loop: true });
       animate();
     },
     stop() {
@@ -716,6 +723,8 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     },
     dispose() {
       this.stop();
+      // タイトルBGM停止
+      stopBgm();
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);

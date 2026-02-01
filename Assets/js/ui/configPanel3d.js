@@ -81,7 +81,7 @@ const BUTTON_RECTS = [
 /** デフォルト設定状態 */
 const DEFAULT_STATE = {
   displayMode: 'window',
-  bgmVolume: 80,
+  bgmVolume: 5,
   seVolume: 80,
   messageSpeed: 80,
 };

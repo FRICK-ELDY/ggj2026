@@ -3,6 +3,8 @@
 // - 音量は 0..100(%) を 0..1 に正規化して適用
 
 let seVolume = 0.8; // 0.0..1.0
+let bgmVolume = 0.05; // 0.0..1.0
+let bgmAudio = null;
 
 const hoverBaseAudio = new Audio('Assets/sound/se/move_cursor_12.mp3');
 hoverBaseAudio.preload = 'auto';
@@ -29,6 +31,58 @@ export function playHover() {
   } catch {
     // no-op
   }
+}
+
+/**
+ * BGM音量をパーセントで設定（0..100）
+ * @param {number} percent
+ */
+export function setBgmVolumePercent(percent) {
+  const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+  bgmVolume = clamped / 100;
+  if (bgmAudio) {
+    bgmAudio.volume = bgmVolume;
+  }
+}
+
+/**
+ * BGMを再生（既存のBGMは停止して差し替え）
+ * @param {string} src
+ * @param {{ loop?: boolean }} [options]
+ */
+export function playBgm(src, options = {}) {
+  const { loop = true } = options;
+  try {
+    if (bgmAudio) {
+      try { bgmAudio.pause(); } catch {}
+    }
+    bgmAudio = new Audio(src);
+    bgmAudio.loop = loop;
+    bgmAudio.preload = 'auto';
+    bgmAudio.volume = bgmVolume;
+    // 自動再生がブロックされる場合があるが、ここでは握り潰す
+    bgmAudio.play().catch(() => {});
+  } catch {
+    // no-op
+  }
+}
+
+/**
+ * BGMを停止
+ */
+export function stopBgm() {
+  if (bgmAudio) {
+    try { bgmAudio.pause(); } catch {}
+    bgmAudio = null;
+  }
+}
+
+/**
+ * BGMが再生中かどうか
+ * @returns {boolean}
+ */
+export function isBgmPlaying() {
+  return !!(bgmAudio && !bgmAudio.paused);
 }
 
 

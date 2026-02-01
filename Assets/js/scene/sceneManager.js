@@ -1,7 +1,7 @@
 import { createTitleScene } from './titleScene.js';
 import { createIntroScene } from './introScene.js';
 import { createGameScene } from './gameScene.js';
-import { setSeVolumePercent } from '../utility/sound.js';
+import { setSeVolumePercent, setBgmVolumePercent } from '../utility/sound.js';
 
 /**
  * シーンマネージャー
@@ -21,13 +21,15 @@ export class SceneManager {
     // グローバルなコンフィグ状態（シーン間で共有）
     this.configState = {
       displayMode: 'window',
-      bgmVolume: 80,
+      bgmVolume: 5,
       seVolume: 80,
       messageSpeed: 80,
     };
 
     // 初期SE音量を適用
     setSeVolumePercent(this.configState.seVolume);
+    // 初期BGM音量を適用
+    setBgmVolumePercent(this.configState.bgmVolume);
   }
 
   /**
@@ -46,6 +48,9 @@ export class SceneManager {
     Object.assign(this.configState, newState);
     if (typeof newState.seVolume === 'number') {
       setSeVolumePercent(this.configState.seVolume);
+    }
+    if (typeof newState.bgmVolume === 'number') {
+      setBgmVolumePercent(this.configState.bgmVolume);
     }
     console.log('Config updated:', this.configState);
   }

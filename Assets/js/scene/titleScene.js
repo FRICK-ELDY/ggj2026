@@ -5,6 +5,7 @@ import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
 import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
 import { createParallaxBackground } from '../utility/parallaxBackground.js';
+import { createGalleryPanel3d } from '../ui/galleryPanel.js';
 import { createCreditPanel3d } from '../ui/creditPanel.js';
 
 /**
@@ -265,6 +266,11 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   
   configPanel.update(initialSize.width, initialSize.height);
 
+  // ギャラリーパネル
+  const galleryPanel = createGalleryPanel3d();
+  configButtonUiScene.add(galleryPanel.panelGroup);
+  galleryPanel.update(initialSize.width, initialSize.height);
+
   // クレジットパネル
   const creditPanel = createCreditPanel3d();
   configButtonUiScene.add(creditPanel.panelGroup);
@@ -392,7 +398,15 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
   // モーダル表示関数
   function showModal(modalId) {
     if (modalId === 'credit') {
+      galleryPanel.hide();
+      configPanel.hide();
       creditPanel.show();
+      return;
+    } else if (modalId === 'stage_select') {
+      creditPanel.hide();
+      configPanel.hide();
+      galleryPanel.setTab('story');
+      galleryPanel.show();
       return;
     }
     console.log(`モーダル表示: ${modalId}`);
@@ -552,8 +566,10 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     configButtonHovered = overConfigButton;
     const creditHits = creditPanel.panelGroup.visible ? raycaster.intersectObject(creditPanel.mesh) : [];
     const overCredit = creditHits.length > 0;
+    const galleryHits = galleryPanel.panelGroup.visible ? raycaster.intersectObject(galleryPanel.mesh) : [];
+    const overGallery = galleryHits.length > 0;
     const panelHits = configPanel.panelGroup.visible ? raycaster.intersectObject(configPanel.mesh) : [];
-    const overPanel = panelHits.length > 0 || overCredit;
+    const overPanel = panelHits.length > 0 || overCredit || overGallery;
 
     // 設定パネル内のボタン（fullscreen / window / back_to_title）でホバーSE
     if (!draggingSlider && panelHits.length > 0) {
@@ -602,6 +618,46 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     if (e.button !== 0) return;
     getPointerNDC(e.clientX, e.clientY);
     raycaster.setFromCamera(pointer, configButtonOrthoCamera);
+
+    // ギャラリーパネルが開いている場合
+    if (galleryPanel.panelGroup.visible) {
+      const panelHits = raycaster.intersectObject(galleryPanel.mesh);
+      if (panelHits.length > 0) {
+        const action = galleryPanel.getActionAt(panelHits[0].point);
+        if (action === 'close') {
+          galleryPanel.hide();
+          playClick();
+          return;
+        } else if (action === 'tab_story') {
+          galleryPanel.setTab('story');
+          playClick();
+          return;
+        } else if (action === 'tab_images') {
+          galleryPanel.setTab('images');
+          playClick();
+          return;
+        } else if (action === 'row_intro_btn') {
+          playClick();
+          galleryPanel.hide();
+          onSceneChange('intro');
+          return;
+        } else if (action === 'row_main_btn') {
+          playClick();
+          galleryPanel.hide();
+          onSceneChange('game');
+          return;
+        } else if (action === 'row_end1_btn' || action === 'row_end2_btn' || action === 'row_end3_btn') {
+          playClick();
+          alert('このエンディングは準備中です。');
+          return;
+        }
+        return;
+      }
+      // パネル外クリックで閉じる
+      galleryPanel.hide();
+      playClick();
+      return;
+    }
 
     // クレジットパネルが開いている場合
     if (creditPanel.panelGroup.visible) {
@@ -663,6 +719,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       if (button.action) {
         playClick();
         button.action();
+        return;
       }
     }
   }
@@ -705,6 +762,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     updateConfigButton(width, height);
     configPanel.update(width, height);
     creditPanel.update(width, height);
+    galleryPanel.update(width, height);
   }
 
   // ESC キーでフルスクリーン解除

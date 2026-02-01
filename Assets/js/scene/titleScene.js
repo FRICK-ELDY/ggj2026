@@ -647,9 +647,20 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
           galleryPanel.hide();
           onSceneChange('game');
           return;
-        } else if (action === 'row_end1_btn' || action === 'row_end2_btn' || action === 'row_end3_btn') {
+        } else if (action === 'row_end1_btn') {
           playClick();
-          alert('このエンディングは準備中です。');
+          galleryPanel.hide();
+          onSceneChange('end1');
+          return;
+        } else if (action === 'row_end2_btn') {
+          playClick();
+          galleryPanel.hide();
+          onSceneChange('end2');
+          return;
+        } else if (action === 'row_end3_btn') {
+          playClick();
+          galleryPanel.hide();
+          onSceneChange('end3');
           return;
         }
         return;

@@ -113,8 +113,8 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
       ctx.fillStyle = '#a0a0a0';
       ctx.textAlign = 'right';
       ctx.fillText(label, ROLE_RIGHT_X, y);
-      // Image button
-      drawButton(ctx, BUTTON_X, y - BUTTON_H / 2, BUTTON_W, BUTTON_H, '画像', false);
+      // Go button
+      drawButton(ctx, BUTTON_X, y - BUTTON_H / 2, BUTTON_W, BUTTON_H, 'go', false);
     });
   } else {
     // Images tab placeholder
@@ -122,7 +122,7 @@ function drawPanelTexture(state, panelWidth, panelHeight) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#a0a0a0';
-    ctx.fillText('準備中', BASE_PANEL_WIDTH / 2, (BASE_PANEL_HEIGHT + (TABS_Y + TAB_H + 8)) / 2);
+    ctx.fillText('なし', BASE_PANEL_WIDTH / 2, (BASE_PANEL_HEIGHT + (TABS_Y + TAB_H + 8)) / 2);
   }
 
   // Close button

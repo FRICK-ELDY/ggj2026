@@ -5,6 +5,7 @@
 let seVolume = 0.8; // 0.0..1.0
 let bgmVolume = 0.05; // 0.0..1.0
 let bgmAudio = null;
+let messageLoopAudio = null;
 
 const hoverBaseAudio = new Audio('Assets/sound/se/move_cursor_12.mp3');
 hoverBaseAudio.preload = 'auto';
@@ -18,6 +19,10 @@ clickBaseAudio.preload = 'auto';
 export function setSeVolumePercent(percent) {
   const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
   seVolume = clamped / 100;
+  // メッセージループSEにも反映
+  if (messageLoopAudio) {
+    messageLoopAudio.volume = seVolume;
+  }
 }
 
 /**
@@ -99,6 +104,37 @@ export function stopBgm() {
  */
 export function isBgmPlaying() {
   return !!(bgmAudio && !bgmAudio.paused);
+}
+
+/**
+ * メッセージ進行中に流すループSEを再生
+ * @param {string} src
+ * @param {{ loop?: boolean }} [options]
+ */
+export function playMessageLoop(src = 'Assets/sound/se/message_2.mp3', options = {}) {
+  const { loop = true } = options;
+  try {
+    if (messageLoopAudio) {
+      try { messageLoopAudio.pause(); } catch {}
+    }
+    messageLoopAudio = new Audio(src);
+    messageLoopAudio.loop = loop;
+    messageLoopAudio.preload = 'auto';
+    messageLoopAudio.volume = seVolume;
+    messageLoopAudio.play().catch(() => {});
+  } catch {
+    // no-op
+  }
+}
+
+/**
+ * メッセージ進行中のループSEを停止
+ */
+export function stopMessageLoop() {
+  if (messageLoopAudio) {
+    try { messageLoopAudio.pause(); } catch {}
+    messageLoopAudio = null;
+  }
 }
 
 

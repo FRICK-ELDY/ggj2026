@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
 import { TextAnimation } from '../animate/textAnimation.js';
-import { playBgm, stopBgm, isBgmPlaying, playClick, playHover, setSeVolumePercent, setBgmVolumePercent } from '../utility/sound.js';
+import { playBgm, stopBgm, isBgmPlaying, playClick, playHover, setSeVolumePercent, setBgmVolumePercent, playMessageLoop, stopMessageLoop } from '../utility/sound.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 
@@ -176,7 +176,8 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
     },
     // onComplete: アニメーション完了時
     () => {
-      // 完了処理（必要に応じて）
+      // テキスト進行用SEを停止
+      stopMessageLoop();
     }
   );
 
@@ -192,6 +193,9 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
   // テキストアニメーションを開始する関数
   function startTextAnimation(text, fontSize) {
     currentFontSize = fontSize;
+    // テキスト進行用SEを再生（前回を念のため停止してから）
+    stopMessageLoop();
+    playMessageLoop('Assets/sound/se/message_2.mp3', { loop: true });
     textAnimation.start(text);
   }
 
@@ -438,6 +442,8 @@ export function createIntroScene(canvas, container, onSceneChange, configState =
       this.stop();
       // BGM停止
       stopBgm();
+      // メッセージループSE停止
+      stopMessageLoop();
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerdown', onPointerDown);

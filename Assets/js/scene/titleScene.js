@@ -3,6 +3,7 @@ import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { UiGlowParticles } from '../utility/uiGlowParticles.js';
+import { playHover } from '../utility/sound.js';
 
 /**
  * タイトルシーンを作成
@@ -303,6 +304,15 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
   uiScene.add(buttonGroup);
 
+  // ボタンのホバー状態を保持（エッジ検知でSEを鳴らす）
+  const buttonHoverStates = [];
+  // 歯車ボタンのホバー状態
+  let configButtonHovered = false;
+  // 設定パネル内ボタンのホバー状態
+  let configPanelHoveredButtonId = null;
+  // 最後に操作したスライダーID（指を離したときに1回だけSEを鳴らす）
+  let lastDraggedSliderId = null;
+
   // ボタングループの位置とスケールを更新する関数（アンカー：右下）
   function updateButtonGroupTransform(canvasWidth, canvasHeight) {
     const aspect = canvasWidth / canvasHeight;
@@ -418,6 +428,10 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
     buttonMeshes.forEach((mesh, index) => {
       const isHovered = hits.some(hit => hit.object === mesh);
+      const wasHovered = buttonHoverStates[index] === true;
+      if (!wasHovered && isHovered) {
+        playHover();
+      }
       const { canvas, texture, label } = buttonTextures[index];
       const ctx = canvas.getContext('2d');
 
@@ -441,6 +455,9 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
       ctx.fillText(label, canvas.width / 2, canvas.height / 2);
 
       texture.needsUpdate = true;
+
+      // 状態を更新
+      buttonHoverStates[index] = isHovered;
     });
 
     if (hits.length === 0) {
@@ -466,6 +483,7 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
             id === 'message_speed_slider'
           ) {
             draggingSlider = id;
+            lastDraggedSliderId = id;
             handlePanelAction(action);
           }
         }
@@ -495,7 +513,26 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
     }
 
     const overConfigButton = raycaster.intersectObject(configButtonMesh).length > 0;
-    const overPanel = configPanel.panelGroup.visible && raycaster.intersectObject(configPanel.mesh).length > 0;
+    if (overConfigButton && !configButtonHovered) {
+      playHover();
+    }
+    configButtonHovered = overConfigButton;
+    const panelHits = configPanel.panelGroup.visible ? raycaster.intersectObject(configPanel.mesh) : [];
+    const overPanel = panelHits.length > 0;
+
+    // 設定パネル内のボタン（fullscreen / window / back_to_title）でホバーSE
+    if (overPanel && !draggingSlider) {
+      const act = configPanel.getActionAt(panelHits[0].point);
+      const id = typeof act === 'object' && act !== null ? act.id : act;
+      const isPanelButton = id === 'fullscreen' || id === 'window' || id === 'back_to_title';
+      const nextHoverId = isPanelButton ? id : null;
+      if (nextHoverId && nextHoverId !== configPanelHoveredButtonId) {
+        playHover();
+      }
+      configPanelHoveredButtonId = nextHoverId;
+    } else {
+      configPanelHoveredButtonId = null;
+    }
 
     if (!draggingSlider && !overConfigButton && !overPanel) {
       // タイトルボタンのホバー処理
@@ -508,11 +545,19 @@ export async function createTitleScene(canvas, container, onSceneChange, onConfi
 
   function onPointerUp() {
     if (draggingSlider) releasedAfterSliderDrag = true;
+    if (lastDraggedSliderId === 'se_slider') {
+      playHover();
+    }
+    lastDraggedSliderId = null;
     draggingSlider = null;
   }
 
   function onPointerLeave() {
     if (draggingSlider) releasedAfterSliderDrag = true;
+    if (lastDraggedSliderId === 'se_slider') {
+      playHover();
+    }
+    lastDraggedSliderId = null;
     draggingSlider = null;
   }
 

@@ -4,6 +4,7 @@ import { updateYawRollPitch } from '../animate/rotate.js';
 import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
+import { playHover } from '../utility/sound.js';
 
 /**
  * ゲームシーンを作成
@@ -103,6 +104,11 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
 
   let draggingSlider = null;
   let releasedAfterSliderDrag = false;
+  let configButtonHovered = false;
+  // 設定パネル内ボタンのホバー状態
+  let configPanelHoveredButtonId = null;
+  // 最後に操作したスライダーID（指を離したときに1回だけSEを鳴らす）
+  let lastDraggedSliderId = null;
 
   function onPointerDown(e) {
     if (e.button !== 0) return;
@@ -121,6 +127,7 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
             id === 'message_speed_slider'
           ) {
             draggingSlider = id;
+            lastDraggedSliderId = id;
             handlePanelAction(action);
           }
         }
@@ -150,17 +157,44 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     }
 
     const overButton = raycaster.intersectObject(configButtonMesh).length > 0;
-    const overPanel = configPanel.panelGroup.visible && raycaster.intersectObject(configPanel.mesh).length > 0;
+    if (overButton && !configButtonHovered) {
+      playHover();
+    }
+    configButtonHovered = overButton;
+    const panelHits = configPanel.panelGroup.visible ? raycaster.intersectObject(configPanel.mesh) : [];
+    const overPanel = panelHits.length > 0;
+
+    // 設定パネル内のボタン（fullscreen / window / back_to_title）でホバーSE
+    if (overPanel && !draggingSlider) {
+      const act = configPanel.getActionAt(panelHits[0].point);
+      const id = typeof act === 'object' && act !== null ? act.id : act;
+      const isPanelButton = id === 'fullscreen' || id === 'window' || id === 'back_to_title';
+      const nextHoverId = isPanelButton ? id : null;
+      if (nextHoverId && nextHoverId !== configPanelHoveredButtonId) {
+        playHover();
+      }
+      configPanelHoveredButtonId = nextHoverId;
+    } else {
+      configPanelHoveredButtonId = null;
+    }
     container.style.cursor = draggingSlider ? 'grabbing' : overButton || overPanel ? 'pointer' : 'default';
   }
 
   function onPointerUp() {
     if (draggingSlider) releasedAfterSliderDrag = true;
+    if (lastDraggedSliderId === 'se_slider') {
+      playHover();
+    }
+    lastDraggedSliderId = null;
     draggingSlider = null;
   }
 
   function onPointerLeave() {
     if (draggingSlider) releasedAfterSliderDrag = true;
+    if (lastDraggedSliderId === 'se_slider') {
+      playHover();
+    }
+    lastDraggedSliderId = null;
     draggingSlider = null;
   }
 

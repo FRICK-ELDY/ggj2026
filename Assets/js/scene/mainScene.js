@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import { createBox } from '../model/box.js';
-import { updateYawRollPitch } from '../animate/rotate.js';
-import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H } from '../ui/screenScale.js';
+import { TextAnimation } from '../animate/textAnimation.js';
+import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSize, scaleValue } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
-import { playHover, playClick, playBgm, stopBgm, isBgmPlaying } from '../utility/sound.js';
+import { playHover, playClick, playBgm, stopBgm, isBgmPlaying, playMessageLoop, stopMessageLoop } from '../utility/sound.js';
 
 /**
  * ゲームシーンを作成
@@ -35,8 +34,7 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   renderer.setSize(initW, initH);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  // ボックス作成
-  const box = createBox(scene);
+  // （ボックスは使用しない）
 
   // コンフィグボタン（歯車）
   const {
@@ -49,6 +47,13 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   // 設定パネル
   const configPanel = createConfigPanel3d(container);
   configButtonUiScene.add(configPanel.panelGroup);
+  // 設定パネルを一番手前に
+  if (configPanel.mesh) {
+    configPanel.mesh.renderOrder = 50;
+  } else {
+    // 念のためグループにも設定（子には自動伝播しないが意図を明示）
+    configPanel.panelGroup.renderOrder = 50;
+  }
   const initialSize = getFittedCanvasSize(container.clientWidth, container.clientHeight);
   
   // 初期コンフィグ状態を設定
@@ -57,6 +62,280 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
   }
   
   configPanel.update(initialSize.width, initialSize.height);
+
+  // ノベルUI（Three.js オルソ UI）
+  const VN_BASE_WIDTH = 920;
+  const VN_BASE_HEIGHT = 160;
+  const VN_MARGIN_BOTTOM_PX = 16;
+  const VN_PADDING_L = 16;
+  const VN_PADDING_R = 16;
+  const VN_PADDING_T = 14;
+  const VN_PADDING_B = 12;
+  const VN_NAME_H = 26;
+  const VN_BTN_W = 120;
+  const VN_BTN_H = 36;
+  const VN_BTN_GAP = 10;
+  const VN_BTN_MARGIN_TOP = 10;
+
+  // UIシーンにノベルパネルを追加
+  const vnGroup = new THREE.Group();
+  configButtonUiScene.add(vnGroup);
+
+  // パネルメッシュ（1x1 をスケールでサイズ付け）
+  const vnGeometry = new THREE.PlaneGeometry(1, 1);
+  let vnMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthTest: false,
+    depthWrite: false
+  });
+  const vnMesh = new THREE.Mesh(vnGeometry, vnMaterial);
+  vnMesh.name = 'novelPanel3d';
+  // ノベルは後ろ側に
+  vnMesh.renderOrder = 10;
+  vnGroup.add(vnMesh);
+
+  // 選択肢ボタン（別メッシュ群）
+  const vnChoicesGroup = new THREE.Group();
+  vnChoicesGroup.visible = false;
+  // 選択肢はノベルの一段前
+  vnChoicesGroup.renderOrder = 11;
+  configButtonUiScene.add(vnChoicesGroup);
+  const choiceMeshes = [];
+
+  function drawRoundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function drawNovelTextureBase(name, body, baseW, baseH) {
+    const canvas = document.createElement('canvas');
+    canvas.width = baseW;
+    canvas.height = baseH;
+    const ctx = canvas.getContext('2d');
+
+    // 背景
+    ctx.fillStyle = 'rgba(26, 26, 46, 0.86)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1;
+    drawRoundedRect(ctx, 0, 0, baseW, baseH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // 名前
+    ctx.font = 'bold 18px "Yu Gothic", "Meiryo", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e8d5b7';
+    ctx.fillText(String(name || ''), VN_PADDING_L, VN_PADDING_T + VN_NAME_H / 2);
+
+    // 本文（簡易折り返し）
+    ctx.font = '20px "Yu Gothic", "Meiryo", sans-serif';
+    ctx.fillStyle = '#e0e0e0';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const textX = VN_PADDING_L;
+    const textY = VN_PADDING_T + VN_NAME_H + 6;
+    const textW = baseW - VN_PADDING_L - VN_PADDING_R;
+    const lineH = 34;
+    const text = String(body || '');
+    let cursorX = textX;
+    let cursorY = textY;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const cw = ctx.measureText(ch).width;
+      if (cursorX + cw > textX + textW || ch === '\n') {
+        cursorX = textX;
+        cursorY += lineH;
+        if (ch === '\n') continue;
+      }
+      ctx.fillText(ch, cursorX, cursorY);
+      cursorX += cw;
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  function redrawNovelTexture(name, body) {
+    if (vnMaterial.map) {
+      vnMaterial.map.dispose();
+    }
+    vnMaterial.map = drawNovelTextureBase(name, body, VN_BASE_WIDTH, VN_BASE_HEIGHT);
+    vnMaterial.needsUpdate = true;
+  }
+
+  // 選択肢ボタン用テクスチャ
+  function createChoiceTexture(label, baseW, baseH, active = false) {
+    const canvas = document.createElement('canvas');
+    canvas.width = baseW;
+    canvas.height = baseH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = active ? 'rgba(232, 213, 183, 0.30)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = active ? 'rgba(232, 213, 183, 0.7)' : 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1;
+    drawRoundedRect(ctx, 0, 0, baseW, baseH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = active ? '#e8d5b7' : '#e0e0e0';
+    ctx.font = '16px "Yu Gothic", "Meiryo", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(label || ''), baseW / 2, baseH / 2);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  function createChoiceMesh(label) {
+    const geom = new THREE.PlaneGeometry(1, 1);
+    const mat = new THREE.MeshBasicMaterial({
+      map: createChoiceTexture(label, VN_BTN_W, VN_BTN_H),
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.userData = { label };
+    // ノベルより前、設定パネルより後にしたいが、設定パネルはさらに上に設定
+    mesh.renderOrder = 11;
+    return mesh;
+  }
+
+  function layoutChoiceMeshes(width, height, count) {
+    // スケール後のサイズ
+    const scaledBtn = getScaledSize(VN_BTN_W, VN_BTN_H, width, height);
+    const gapPx = scaleValue(VN_BTN_GAP, width, height);
+
+    const n = count;
+    const totalH = n * scaledBtn.height + (n - 1) * gapPx;
+    const startY = (totalH / 2) - (scaledBtn.height / 2); // 画面中央を基準に上下へ配置
+
+    for (let i = 0; i < n; i++) {
+      const mesh = choiceMeshes[i];
+      if (!mesh) continue;
+      mesh.scale.set(scaledBtn.width, scaledBtn.height, 1);
+      // 画面中央に縦並び配置（x=0 中央）
+      mesh.position.set(
+        0,
+        startY - i * (scaledBtn.height + gapPx),
+        0
+      );
+    }
+  }
+
+  function updateNovelLayout(width, height) {
+    // オルソカメラの座標系はピクセルに一致
+    const scaled = getScaledSize(VN_BASE_WIDTH, VN_BASE_HEIGHT, width, height);
+    vnMesh.scale.set(scaled.width, scaled.height, 1);
+    const halfW = width / 2;
+    const halfH = height / 2;
+    const marginBottom = scaleValue(VN_MARGIN_BOTTOM_PX, width, height);
+    // アンカー(0.5, 0) ピボット(0.5, 0)
+    const anchorX = 0;
+    const anchorY = -halfH + marginBottom;
+    const pivotOffsetX = 0;              // (0.5 - 0.5) * width
+    const pivotOffsetY = -(scaled.height / 2); // (0 - 0.5) * height
+    vnMesh.position.set(anchorX - pivotOffsetX, anchorY - pivotOffsetY, 0);
+
+    if (vnChoicesGroup.visible) {
+      const count = choiceMeshes.filter(Boolean).length;
+      layoutChoiceMeshes(width, height, count);
+    }
+  }
+
+  // スクリプト（台詞）
+  const lines = [
+    { name: '神父', text: '「シスター...シスター！！」' },
+    { name: 'シスター', text: '「...！」' },
+    { name: '神父', text: '「シスター、私の説教はつまらないですか？」' },
+    { name: 'シスター', text: '「いえ、そんなことは...」' },
+    { name: '神父', text: '「そうですか...では、シスター」' },
+    { name: '神父', text: '「神様は何処に居ると思いますか？」' },
+    { name: 'シスター', text: '「...」' },
+  ];
+  let currentLineIndex = 0;
+  let end3Timer = null;
+
+  // テキストアニメーション
+  let vnSpeaker = '';
+  let vnBody = '';
+  const textAnimation = new TextAnimation(
+    (current) => {
+      vnBody = current;
+      redrawNovelTexture(vnSpeaker, vnBody);
+    },
+    () => { stopMessageLoop(); }
+  );
+  // 初期スピード反映
+  if (initialConfigState && typeof initialConfigState.messageSpeed === 'number') {
+    textAnimation.setSpeed(initialConfigState.messageSpeed);
+  }
+
+  function showLine(index) {
+    const line = lines[index];
+    if (!line) return;
+    vnSpeaker = line.name || '';
+    vnBody = '';
+    redrawNovelTexture(vnSpeaker, vnBody);
+    textAnimation.start(line.text || '');
+    playMessageLoop();
+  }
+
+  function showChoices() {
+    vnChoicesGroup.visible = true;
+    // 初期の2つ
+    if (!choiceMeshes[0]) choiceMeshes[0] = createChoiceMesh('END1');
+    if (!choiceMeshes[1]) choiceMeshes[1] = createChoiceMesh('END2');
+    // 追加
+    if (!vnChoicesGroup.children.includes(choiceMeshes[0])) vnChoicesGroup.add(choiceMeshes[0]);
+    if (!vnChoicesGroup.children.includes(choiceMeshes[1])) vnChoicesGroup.add(choiceMeshes[1]);
+    // レイアウト反映
+    const size = getFittedCanvasSize(container.clientWidth, container.clientHeight);
+    layoutChoiceMeshes(size.width, size.height, 2);
+
+    if (end3Timer) {
+      clearTimeout(end3Timer);
+      end3Timer = null;
+    }
+    end3Timer = setTimeout(() => {
+      if (!choiceMeshes[2]) choiceMeshes[2] = createChoiceMesh('END3');
+      if (!vnChoicesGroup.children.includes(choiceMeshes[2])) vnChoicesGroup.add(choiceMeshes[2]);
+      const size2 = getFittedCanvasSize(container.clientWidth, container.clientHeight);
+      layoutChoiceMeshes(size2.width, size2.height, 3);
+    }, 5000);
+  }
+
+  function advanceNovel() {
+    // 進行中はスキップ
+    if (textAnimation.isPlaying()) {
+      textAnimation.skip();
+      return;
+    }
+    // 次へ
+    if (currentLineIndex < lines.length - 1) {
+      currentLineIndex += 1;
+      showLine(currentLineIndex);
+    } else {
+      // 選択肢表示
+      showChoices();
+    }
+  }
+
+  // 最初の行を表示
+  redrawNovelTexture('', '');
+  showLine(currentLineIndex);
 
   // Raycaster
   const raycaster = new THREE.Raycaster();
@@ -156,6 +435,7 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         } else if (draggingSlider === 'message_speed_slider') {
           configPanel.setState({ messageSpeed: value });
           if (onConfigChange) onConfigChange(configPanel.getState());
+          textAnimation.setSpeed(value);
         }
       }
     }
@@ -181,7 +461,14 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     } else {
       configPanelHoveredButtonId = null;
     }
-    container.style.cursor = draggingSlider ? 'grabbing' : overButton || overPanel ? 'pointer' : 'default';
+    // 選択肢ホバー判定
+    let overChoice = false;
+    if (vnChoicesGroup.visible && choiceMeshes.length > 0) {
+      const hitChoice = raycaster.intersectObjects(choiceMeshes.filter(Boolean));
+      overChoice = hitChoice.length > 0;
+    }
+
+    container.style.cursor = draggingSlider ? 'grabbing' : (overButton || overPanel || overChoice) ? 'pointer' : 'default';
   }
 
   function onPointerUp() {
@@ -230,6 +517,25 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
       return;
     }
 
+    // 選択肢クリック
+    if (vnChoicesGroup.visible && choiceMeshes.length > 0) {
+      const hitChoice = raycaster.intersectObjects(choiceMeshes.filter(Boolean));
+      if (hitChoice.length > 0) {
+        const label = hitChoice[0].object.userData?.label;
+        playClick();
+        console.log('Selected:', label);
+        return;
+      }
+    }
+
+    // ノベルパネルクリック（進行/スキップ）
+    const vnHits = raycaster.intersectObject(vnMesh);
+    if (vnHits.length > 0 && !vnChoicesGroup.visible) {
+      playClick();
+      advanceNovel();
+      return;
+    }
+
     if (isPointerOverConfigButton(e.clientX, e.clientY)) {
       configPanel.syncDisplayModeFromDocument();
       configPanel.toggle();
@@ -253,6 +559,7 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
     renderer.setSize(width, height);
     updateConfigButton(width, height);
     configPanel.update(width, height);
+    updateNovelLayout(width, height);
   }
 
   // ESC キーでフルスクリーン解除
@@ -271,9 +578,16 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
 
   // アニメーションループ
   let animationId = null;
+  let prevTimeMs = performance.now();
   function animate() {
     animationId = requestAnimationFrame(animate);
-    updateYawRollPitch(box);
+    const now = performance.now();
+    const dt = Math.max(0, (now - prevTimeMs) / 1000);
+    prevTimeMs = now;
+
+    // テキストアニメーション更新
+    textAnimation.update(dt);
+
     renderer.autoClear = false;
     renderer.clear();
     renderer.render(scene, camera);
@@ -309,8 +623,6 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
       container.removeEventListener('webkitfullscreenchange', onResize);
       window.removeEventListener('resize', onResize);
       // メモリ解放
-      box.geometry.dispose();
-      box.material.dispose();
       configButtonMesh.geometry.dispose();
       configButtonMesh.material.dispose();
       configPanel.panelGroup.children.forEach(child => {
@@ -318,6 +630,20 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
         if (child.material) child.material.dispose();
       });
       renderer.dispose();
+      if (end3Timer) {
+        clearTimeout(end3Timer);
+        end3Timer = null;
+      }
+      // ノベルUI解放
+      if (vnMaterial.map) vnMaterial.map.dispose();
+      vnGeometry.dispose();
+      choiceMeshes.forEach(m => {
+        if (!m) return;
+        if (m.material.map) m.material.map.dispose();
+        m.geometry.dispose();
+        m.material.dispose();
+      });
+      stopMessageLoop();
     }
   };
 }

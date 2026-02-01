@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSize, getScale } from '../ui/screenScale.js';
+import { getFittedCanvasSize, BASE_RESOLUTION_W, BASE_RESOLUTION_H, getScaledSize, getScale, scaleValue } from '../ui/screenScale.js';
 import { createConfigPanel3d } from '../ui/configPanel3d.js';
 import { createConfigButton3d } from '../ui/configButton3d.js';
 import { createParallaxBackground } from '../utility/parallaxBackground.js';
@@ -59,6 +59,14 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
   const VN_PADDING_R = 16;
   const VN_PADDING_T = 14;
   const VN_NAME_H = 26;
+
+  // 立ち絵レイアウト（mainScene と同様）
+  const CHAR_SIDE_MARGIN_PX = 24;
+  const CHAR_TARGET_HEIGHT_RATE = 0.9;
+  const CHAR_ACTIVE_SCALE = 1.0;
+  const CHAR_INACTIVE_SCALE = 0.92;
+  const NAME_SISTER = 'シスター';
+  const NAME_PRIEST = '神父';
 
   const vnGroup = new THREE.Group();
   uiScene.add(vnGroup);
@@ -150,7 +158,90 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
     vnMesh.position.set(0, -halfH + marginBottom + scaledH / 2, 0);
   }
 
-  // 会話（シスターのみ）
+  // 立ち絵（神父=左, シスター=右）
+  const charGeometry = new THREE.PlaneGeometry(1, 1);
+  const textureLoader = new THREE.TextureLoader();
+  const charLeft = {
+    name: NAME_PRIEST,
+    mesh: null,
+    material: null,
+    texture: null,
+    imgW: 1,
+    imgH: 1,
+    scaleFactor: CHAR_INACTIVE_SCALE
+  };
+  const charRight = {
+    name: NAME_SISTER,
+    mesh: null,
+    material: null,
+    texture: null,
+    imgW: 1,
+    imgH: 1,
+    scaleFactor: CHAR_INACTIVE_SCALE
+  };
+
+  async function loadCharacterTexture(url) {
+    const tex = await new Promise((resolve, reject) => {
+      textureLoader.load(url, (t) => resolve(t), undefined, (e) => reject(e));
+    });
+    if ('colorSpace' in tex && THREE.SRGBColorSpace !== undefined) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    } else if ('encoding' in tex && THREE.sRGBEncoding !== undefined) {
+      tex.encoding = THREE.sRGBEncoding;
+    }
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  function createCharacterMesh(tex) {
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(charGeometry, mat);
+    mesh.renderOrder = 0;
+    return { mesh, material: mat };
+  }
+
+  function layoutCharacters(width, height) {
+    if (!charLeft.mesh || !charRight.mesh) return;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    const marginX = scaleValue(CHAR_SIDE_MARGIN_PX, width, height);
+    const baseH = height * CHAR_TARGET_HEIGHT_RATE;
+
+    const leftH = baseH * charLeft.scaleFactor;
+    const leftW = leftH * (charLeft.imgW / charLeft.imgH);
+    charLeft.mesh.scale.set(leftW, leftH, 1);
+    charLeft.mesh.position.set(-halfW + marginX + leftW / 2, -halfH + leftH / 2, -0.2);
+
+    const rightH = baseH * charRight.scaleFactor;
+    const rightW = rightH * (charRight.imgW / charRight.imgH);
+    charRight.mesh.scale.set(rightW, rightH, 1);
+    charRight.mesh.position.set(halfW - marginX - rightW / 2, -halfH + rightH / 2, -0.2);
+  }
+
+  function applyCharacterActiveState(target, isActive) {
+    if (!target || !target.material) return;
+    target.scaleFactor = isActive ? CHAR_ACTIVE_SCALE : CHAR_INACTIVE_SCALE;
+    target.material.color.set(isActive ? 0xffffff : 0x888888);
+    target.material.needsUpdate = true;
+  }
+
+  function updateSpeakerEmphasis() {
+    const speaker = vnSpeaker || '';
+    const leftActive = speaker === charLeft.name;
+    const rightActive = speaker === charRight.name;
+    applyCharacterActiveState(charLeft, leftActive);
+    applyCharacterActiveState(charRight, rightActive);
+    const size = getFittedCanvasSize(container.clientWidth, container.clientHeight);
+    layoutCharacters(size.width, size.height);
+  }
+
+  // 会話
   let vnSpeaker = 'シスター';
   let vnBody = '';
   const lines = [
@@ -173,6 +264,7 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
     redrawNovel(vnSpeaker, vnBody);
     textAnimation.start(line.text || '');
     playMessageLoop();
+    updateSpeakerEmphasis();
   }
 
   const raycaster = new THREE.Raycaster();
@@ -343,11 +435,35 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
     updateNovelLayout(width, height);
     // 背景サイズ更新
     parallaxBg.updateSize(width, height);
+    layoutCharacters(width, height);
   }
 
   container.addEventListener('fullscreenchange', onResize);
   container.addEventListener('webkitfullscreenchange', onResize);
   window.addEventListener('resize', onResize);
+
+  // 立ち絵読み込み・作成
+  try {
+    charLeft.texture = await loadCharacterTexture('Assets/texture/chara_pleast.png');
+    charLeft.imgW = charLeft.texture.image?.width || 1;
+    charLeft.imgH = charLeft.texture.image?.height || 1;
+    const leftRes = createCharacterMesh(charLeft.texture);
+    charLeft.mesh = leftRes.mesh;
+    charLeft.material = leftRes.material;
+    uiScene.add(charLeft.mesh);
+
+    charRight.texture = await loadCharacterTexture('Assets/texture/chara_sister.png');
+    charRight.imgW = charRight.texture.image?.width || 1;
+    charRight.imgH = charRight.texture.image?.height || 1;
+    const rightRes = createCharacterMesh(charRight.texture);
+    charRight.mesh = rightRes.mesh;
+    charRight.material = rightRes.material;
+    uiScene.add(charRight.mesh);
+  } catch (e) {
+    console.error('立ち絵の読み込みに失敗しました:', e);
+  }
+
+  updateSpeakerEmphasis();
   onResize();
 
   let animationId = null;
@@ -401,6 +517,16 @@ export async function createEnd2Scene(canvas, container, onSceneChange, onConfig
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();
       });
+      if (charLeft.mesh) {
+        if (charLeft.material?.map) charLeft.material.map.dispose();
+        if (charLeft.mesh.geometry) charLeft.mesh.geometry.dispose();
+        if (charLeft.material) charLeft.material.dispose();
+      }
+      if (charRight.mesh) {
+        if (charRight.material?.map) charRight.material.map.dispose();
+        if (charRight.mesh.geometry) charRight.mesh.geometry.dispose();
+        if (charRight.material) charRight.material.dispose();
+      }
       renderer.dispose();
     }
   };

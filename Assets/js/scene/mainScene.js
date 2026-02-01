@@ -636,11 +636,11 @@ export async function createGameScene(canvas, container, onSceneChange, onConfig
       if (hitChoice.length > 0) {
         const label = hitChoice[0].object.userData?.label;
         playClick();
-        if (label === 'END1') {
+        if (label === '賛同する') {
           onSceneChange('end1');
-        } else if (label === 'END2') {
+        } else if (label === '拒絶する') {
           onSceneChange('end2');
-        } else if (label === 'END3') {
+        } else if (label === '分からない...') {
           onSceneChange('end3');
         } else {
           console.log('Selected:', label);
